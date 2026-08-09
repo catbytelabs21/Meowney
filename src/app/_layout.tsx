@@ -10,7 +10,7 @@ import { typography } from '@/theme/typography';
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
+  initialRouteName: 'index',
 };
 
 export default function RootLayout() {
@@ -31,7 +31,7 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <Stack
-        initialRouteName="(tabs)"
+        initialRouteName="index"
         screenOptions={{
           headerStyle: { backgroundColor: theme.colors.background },
           headerShadowVisible: false,
@@ -40,6 +40,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="dashboard" options={{ title: 'Dashboard' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="accounts/index" options={{ title: 'Cuentas' }} />
         <Stack.Screen name="accounts/create" options={{ title: 'Nueva cuenta' }} />
@@ -48,6 +49,8 @@ export default function RootLayout() {
         <Stack.Screen name="transactions/[id]" options={{ title: 'Transaccion' }} />
         <Stack.Screen name="categories/index" options={{ title: 'Categorias' }} />
         <Stack.Screen name="categories/create" options={{ title: 'Nueva categoria' }} />
+        <Stack.Screen name="savings/index" options={{ title: 'Ahorros' }} />
+        <Stack.Screen name="debts/index" options={{ title: 'Deudas' }} />
       </Stack>
     </PaperProvider>
   );

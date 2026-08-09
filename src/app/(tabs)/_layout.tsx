@@ -4,7 +4,7 @@ import type { ColorValue } from 'react-native';
 import { colors } from '@/theme/colors';
 
 export const unstable_settings = {
-  initialRouteName: 'home',
+  initialRouteName: 'history',
 };
 
 type TabIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -18,7 +18,7 @@ function tabIcon(name: TabIconName) {
 export default function TabsLayout() {
   return (
     <Tabs
-      initialRouteName="home"
+      initialRouteName="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -26,8 +26,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="home"
-        options={{ title: 'Inicio', tabBarIcon: tabIcon('home-outline') }}
+        name="history"
+        options={{ title: 'Historial', tabBarIcon: tabIcon('history') }}
       />
       <Tabs.Screen
         name="transactions"
@@ -38,12 +38,8 @@ export default function TabsLayout() {
         options={{ title: 'Presupuestos', tabBarIcon: tabIcon('chart-donut') }}
       />
       <Tabs.Screen
-        name="goals"
-        options={{ title: 'Metas', tabBarIcon: tabIcon('flag-outline') }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{ title: 'Ajustes', tabBarIcon: tabIcon('cog-outline') }}
+        name="more"
+        options={{ title: 'Mas', tabBarIcon: tabIcon('dots-horizontal-circle-outline') }}
       />
     </Tabs>
   );
