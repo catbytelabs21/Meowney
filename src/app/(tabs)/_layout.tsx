@@ -1,7 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import type { ColorValue } from 'react-native';
-import { colors } from '@/theme/colors';
+import { Tabs, router, usePathname } from 'expo-router';
+import { useCallback } from 'react';
+import { View, type ColorValue, useColorScheme } from 'react-native';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
+import { notebookRepository } from '@/database/repositories/notebook.repository';
+import { useDeferredQuery } from '@/hooks/useDeferredQuery';
+import { useAppStore } from '@/stores/app.store';
+import { darkColors, lightColors } from '@/theme/colors';
 
 export const unstable_settings = {
   initialRouteName: 'history',
@@ -16,15 +22,55 @@ function tabIcon(name: TabIconName) {
 }
 
 export default function TabsLayout() {
+  const pathname = usePathname();
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const isNotebooksRoute = pathname === '/notebooks';
+  const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
+  const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
+  const loadNotebookName = useCallback(
+    () =>
+      selectedNotebookName ??
+      (selectedNotebookId ? notebookRepository.getActiveById(selectedNotebookId)?.name ?? null : null),
+    [selectedNotebookId, selectedNotebookName],
+  );
+  const { data: activeNotebookName } = useDeferredQuery(loadNotebookName, selectedNotebookName);
+
   return (
-    <Tabs
-      initialRouteName="history"
-      screenOptions={{
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <AppHeader
+        title={isNotebooksRoute ? 'Meowney' : activeNotebookName ?? 'Meowney'}
+        left={
+          isNotebooksRoute ? undefined : (
+            <AppHeaderActionButton
+              accessibilityLabel="Ir a libretas"
+              icon="notebook-outline"
+              onPress={() => router.replace('/notebooks')}
+            />
+          )
+        }
+      />
+      <Tabs
+        initialRouteName="history"
+        screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedText,
-      }}
-    >
+        tabBarStyle: {
+          backgroundColor: colors.background,
+          borderTopColor: colors.border,
+          display: isNotebooksRoute ? 'none' : 'flex',
+          position: 'absolute',
+        },
+        sceneStyle: {
+          backgroundColor: colors.background,
+        },
+        }}
+      >
+      <Tabs.Screen
+        name="notebooks"
+        options={{ href: null, title: 'Libretas', tabBarIcon: tabIcon('notebook-outline') }}
+      />
       <Tabs.Screen
         name="history"
         options={{ title: 'Historial', tabBarIcon: tabIcon('history') }}
@@ -41,6 +87,7 @@ export default function TabsLayout() {
         name="more"
         options={{ title: 'Mas', tabBarIcon: tabIcon('dots-horizontal-circle-outline') }}
       />
-    </Tabs>
+      </Tabs>
+    </View>
   );
 }

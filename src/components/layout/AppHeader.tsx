@@ -1,0 +1,62 @@
+import type { ReactNode } from 'react';
+import { StyleSheet, View, useColorScheme } from 'react-native';
+import { Text } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSettingsButton } from './AppSettingsButton';
+import { darkColors, lightColors } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
+
+type AppHeaderProps = {
+  left?: ReactNode;
+  right?: ReactNode;
+  title: string;
+};
+
+export function AppHeader({ left, right = <AppSettingsButton />, title }: AppHeaderProps) {
+  const colorScheme = useColorScheme();
+  const colors = colorScheme === 'light' ? lightColors : darkColors;
+
+  return (
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={styles.bar}>
+        <View style={styles.side}>{left}</View>
+        <View style={styles.center}>
+          <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>
+            {title}
+          </Text>
+        </View>
+        <View style={styles.side}>{right}</View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    borderBottomWidth: 0,
+  },
+  bar: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  side: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: typography.titleWeight,
+  },
+});

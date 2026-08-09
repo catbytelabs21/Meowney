@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -18,11 +18,16 @@ import {
   IconButton,
   Portal,
   Surface,
+  Switch,
   Text,
   TextInput,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { notebookRepository, type NotebookInput } from '@/database/repositories/notebook.repository';
+import { settingsRepository } from '@/database/repositories/settings.repository';
+import type { Settings } from '@/features/settings/types';
+import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
@@ -36,6 +41,7 @@ type NotebookFormValues = {
   icon: NotebookIconName;
   color: string;
   currency: string;
+  isDefault: boolean;
 };
 
 type NotebookIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -77,10 +83,15 @@ function getInitialForm(colors: MeowneyColors): NotebookFormValues {
     icon: 'notebook-outline',
     color: colors.irisGleam,
     currency: 'MXN',
+    isDefault: false,
   };
 }
 
-function getFormFromNotebook(notebook: Notebook, colors: MeowneyColors): NotebookFormValues {
+function getFormFromNotebook(
+  notebook: Notebook,
+  colors: MeowneyColors,
+  settings: Settings,
+): NotebookFormValues {
   const fallback = getInitialForm(colors);
 
   return {
@@ -89,6 +100,7 @@ function getFormFromNotebook(notebook: Notebook, colors: MeowneyColors): Noteboo
     icon: (notebook.icon as NotebookIconName | null) ?? fallback.icon,
     color: notebook.color ?? fallback.color,
     currency: notebook.currency,
+    isDefault: settings.defaultNotebookId === notebook.id,
   };
 }
 
@@ -100,6 +112,10 @@ function toInput(values: NotebookFormValues): NotebookInput {
     color: values.color,
     currency: values.currency,
   };
+}
+
+function getNotebookEntryPath(settings: Settings): '/dashboard' | '/history' {
+  return settings.notebookEntryDestination === 'tabs' ? '/history' : '/dashboard';
 }
 
 function formatDate(value: string) {
@@ -117,23 +133,56 @@ export function NotebooksScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
 
-  const [notebooks, setNotebooks] = useState(() => notebookRepository.listActive());
+  const loadNotebooksData = useCallback(
+    (): { notebooks: Notebook[]; settings: Settings | null } => ({
+      notebooks: notebookRepository.listActive(),
+      settings: settingsRepository.getOrCreate(),
+    }),
+    [],
+  );
+  const {
+    data: notebooksData,
+    error: loadError,
+    isLoading,
+    reload: reloadData,
+  } = useDeferredQuery(loadNotebooksData, { notebooks: [], settings: null as Settings | null });
+  const { notebooks, settings } = notebooksData;
+  const notebookEntryPath = settings ? getNotebookEntryPath(settings) : '/dashboard';
   const [infoNotebook, setInfoNotebook] = useState<Notebook | null>(null);
   const [deleteNotebook, setDeleteNotebook] = useState<Notebook | null>(null);
   const [editingNotebook, setEditingNotebook] = useState<Notebook | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
-
-  const reloadNotebooks = useCallback(() => {
-    setNotebooks(notebookRepository.listActive());
-  }, []);
+  const didHandleInitialLaunch = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
       clearSelectedNotebookId();
     }, [clearSelectedNotebookId]),
   );
+
+  useEffect(() => {
+    if (isLoading || !settings || didHandleInitialLaunch.current) {
+      return;
+    }
+
+    didHandleInitialLaunch.current = true;
+
+    if (settings.launchDestination !== 'notebooks' && settings.defaultNotebookId) {
+      const defaultNotebook = notebooks.find((notebook) => notebook.id === settings.defaultNotebookId);
+      setSelectedNotebookId(settings.defaultNotebookId, defaultNotebook?.name ?? null);
+      router.replace({
+        pathname: getNotebookEntryPath(settings),
+        params: { notebookId: settings.defaultNotebookId },
+      });
+    }
+  }, [isLoading, notebooks, settings, setSelectedNotebookId]);
+
+  useEffect(() => {
+    router.prefetch('/dashboard');
+    router.prefetch('/history');
+  }, []);
 
   const openCreate = () => {
     setFormValues(getInitialForm(colors));
@@ -142,7 +191,7 @@ export function NotebooksScreen() {
   };
 
   const openEdit = (notebook: Notebook) => {
-    setFormValues(getFormFromNotebook(notebook, colors));
+    setFormValues(getFormFromNotebook(notebook, colors, settings ?? settingsRepository.getOrCreate()));
     setShowNameError(false);
     setEditingNotebook(notebook);
   };
@@ -159,14 +208,26 @@ export function NotebooksScreen() {
       return;
     }
 
+    let savedNotebookId: string;
+
     if (editingNotebook) {
       notebookRepository.update(editingNotebook.id, toInput(formValues));
+      savedNotebookId = editingNotebook.id;
     } else {
-      notebookRepository.create(toInput(formValues));
+      const createdNotebook = notebookRepository.create(toInput(formValues));
+      savedNotebookId = createdNotebook.id;
+    }
+
+    const currentSettings = settings ?? settingsRepository.getOrCreate();
+
+    if (formValues.isDefault) {
+      settingsRepository.setDefaultNotebook(savedNotebookId);
+    } else if (currentSettings.defaultNotebookId === savedNotebookId) {
+      settingsRepository.setDefaultNotebook(null);
     }
 
     closeForm();
-    reloadNotebooks();
+    reloadData();
   };
 
   const confirmDelete = () => {
@@ -175,8 +236,11 @@ export function NotebooksScreen() {
     }
 
     notebookRepository.archive(deleteNotebook.id);
+    if (settings?.defaultNotebookId === deleteNotebook.id) {
+      settingsRepository.setDefaultNotebook(null);
+    }
     setDeleteNotebook(null);
-    reloadNotebooks();
+    reloadData();
   };
 
   const renderNotebook = ({ item }: { item: Notebook }) => {
@@ -188,8 +252,8 @@ export function NotebooksScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => {
-            setSelectedNotebookId(item.id);
-            router.push({ pathname: '/dashboard', params: { notebookId: item.id } });
+            setSelectedNotebookId(item.id, item.name);
+            router.replace({ pathname: notebookEntryPath, params: { notebookId: item.id } });
           }}
           style={({ pressed }) => [styles.nameButton, pressed && styles.pressed]}
         >
@@ -197,9 +261,14 @@ export function NotebooksScreen() {
             <MaterialCommunityIcons name={iconName} size={20} color={colors.void} />
           </View>
           <View style={styles.nameCopy}>
-            <Text numberOfLines={1} style={styles.notebookName}>
-              {item.name}
-            </Text>
+            <View style={styles.nameLine}>
+              <Text numberOfLines={1} style={styles.notebookName}>
+                {item.name}
+              </Text>
+              {settings?.defaultNotebookId === item.id ? (
+                <MaterialCommunityIcons name="star" size={15} color={colors.warning} />
+              ) : null}
+            </View>
             <Text numberOfLines={1} style={styles.notebookMeta}>
               {item.currency}
             </Text>
@@ -243,8 +312,9 @@ export function NotebooksScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <View style={styles.safeArea}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.contentSafeArea}>
+        <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>LIBRETAS</Text>
           <Text style={styles.title}>Control financiero</Text>
@@ -257,19 +327,27 @@ export function NotebooksScreen() {
           </View>
           <Divider />
           <FlatList
-            data={notebooks}
+            data={isLoading ? [] : notebooks}
             keyExtractor={(item) => item.id}
             renderItem={renderNotebook}
-            contentContainerStyle={notebooks.length ? styles.listContent : styles.emptyContent}
+            contentContainerStyle={!isLoading && notebooks.length ? styles.listContent : styles.emptyContent}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="notebook-plus-outline" size={36} color={colors.mutedText} />
-                <Text style={styles.emptyTitle}>Aun no hay libretas</Text>
-                <Text style={styles.emptyText}>
-                  Crea una libreta para separar cuentas, categorias y movimientos por contexto.
-                </Text>
-              </View>
+              isLoading ? (
+                <AppLoadingState colors={colors} label="Cargando libretas" />
+              ) : (
+                <View style={styles.emptyState}>
+                  <MaterialCommunityIcons name="notebook-plus-outline" size={36} color={colors.mutedText} />
+                  <Text style={styles.emptyTitle}>
+                    {loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay libretas'}
+                  </Text>
+                  <Text style={styles.emptyText}>
+                    {loadError
+                      ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
+                      : 'Crea una libreta para separar cuentas, categorias y movimientos por contexto.'}
+                  </Text>
+                </View>
+              )
             }
             ListFooterComponent={
               <Button
@@ -286,7 +364,8 @@ export function NotebooksScreen() {
             }
           />
         </Surface>
-      </View>
+        </View>
+      </SafeAreaView>
 
       <Portal>
         <Dialog
@@ -343,7 +422,7 @@ export function NotebooksScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -485,6 +564,17 @@ function NotebookFormDialog({
                 })}
               </View>
             </View>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchCopy}>
+                <Text style={styles.switchLabel}>Libreta predeterminada</Text>
+                <Text style={styles.switchText}>Solo una libreta puede quedar marcada.</Text>
+              </View>
+              <Switch
+                value={values.isDefault}
+                onValueChange={(isDefault) => onChange({ ...values, isDefault })}
+              />
+            </View>
           </View>
         </Dialog.ScrollArea>
         <Dialog.Actions>
@@ -515,6 +605,10 @@ const infoStyles = StyleSheet.create({
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
     safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentSafeArea: {
       flex: 1,
       backgroundColor: colors.background,
     },
@@ -606,7 +700,14 @@ function createStyles(colors: MeowneyColors) {
       flex: 1,
       minWidth: 0,
     },
+    nameLine: {
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
     notebookName: {
+      flexShrink: 1,
       color: colors.text,
       fontSize: typography.bodySize,
       fontWeight: typography.bodyWeight,
@@ -739,6 +840,32 @@ function createStyles(colors: MeowneyColors) {
     },
     currencyButton: {
       borderRadius: radii.button,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.card,
+      backgroundColor: colors.surfaceAlt,
+      padding: spacing.md,
+    },
+    switchCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    switchLabel: {
+      color: colors.text,
+      fontSize: typography.bodySize,
+      fontWeight: typography.bodyWeight,
+    },
+    switchText: {
+      color: colors.mutedText,
+      fontSize: typography.bodySmallSize,
+      lineHeight: 20,
     },
   });
 }

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
@@ -23,8 +23,12 @@ import {
   TextInput,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
+import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { accountRepository, type AccountInput } from '@/database/repositories/account.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
+import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
@@ -127,6 +131,7 @@ export function AccountsScreen() {
   const { notebookId } = useLocalSearchParams<{ notebookId?: string }>();
   const routeNotebookId = Array.isArray(notebookId) ? notebookId[0] : notebookId;
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
+  const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
   const colorScheme = useColorScheme();
@@ -134,12 +139,23 @@ export function AccountsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
 
-  const [accounts, setAccounts] = useState(() =>
-    activeNotebookId ? accountRepository.listActiveByNotebook(activeNotebookId) : [],
-  );
-  const [activeNotebookName, setActiveNotebookName] = useState(() =>
-    activeNotebookId ? notebookRepository.getActiveById(activeNotebookId)?.name : null,
-  );
+  const loadAccountsData = useCallback(() => {
+    if (!activeNotebookId) {
+      return { accounts: [], notebookName: selectedNotebookName };
+    }
+
+    return {
+      accounts: accountRepository.listActiveByNotebook(activeNotebookId),
+      notebookName: selectedNotebookName ?? notebookRepository.getActiveById(activeNotebookId)?.name ?? null,
+    };
+  }, [activeNotebookId, selectedNotebookName]);
+  const {
+    data: accountsData,
+    error: loadError,
+    isLoading,
+    reload: reloadAccounts,
+  } = useDeferredQuery(loadAccountsData, { accounts: [], notebookName: selectedNotebookName });
+  const { accounts, notebookName: activeNotebookName } = accountsData;
   const [infoAccount, setInfoAccount] = useState<Account | null>(null);
   const [deleteAccount, setDeleteAccount] = useState<Account | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -147,26 +163,11 @@ export function AccountsScreen() {
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
 
-  const reloadAccounts = useCallback(() => {
-    if (!activeNotebookId) {
-      setAccounts([]);
-      setActiveNotebookName(null);
-      return;
-    }
-
-    setAccounts(accountRepository.listActiveByNotebook(activeNotebookId));
-    setActiveNotebookName(notebookRepository.getActiveById(activeNotebookId)?.name ?? null);
-  }, [activeNotebookId]);
-
   useEffect(() => {
     if (routeNotebookId && routeNotebookId !== selectedNotebookId) {
       setSelectedNotebookId(routeNotebookId);
     }
   }, [routeNotebookId, selectedNotebookId, setSelectedNotebookId]);
-
-  useEffect(() => {
-    reloadAccounts();
-  }, [reloadAccounts]);
 
   const openCreate = () => {
     setFormValues(getInitialForm(colors));
@@ -270,14 +271,19 @@ export function AccountsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <Stack.Screen
-        options={{
-          headerTitleAlign: 'center',
-          title: activeNotebookName ?? 'Cuentas',
-        }}
+    <View style={styles.safeArea}>
+      <AppHeader
+        title={activeNotebookName ?? 'Cuentas'}
+        left={
+          <AppHeaderActionButton
+            accessibilityLabel="Regresar a mas"
+            icon="arrow-left"
+            onPress={() => router.push('/more')}
+          />
+        }
       />
-      <View style={styles.container}>
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.contentSafeArea}>
+        <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>CUENTAS</Text>
           <Text style={styles.title}>Activos y tarjetas</Text>
@@ -290,7 +296,7 @@ export function AccountsScreen() {
             <Text style={styles.emptyText}>
               Entra primero a una libreta para que las cuentas se guarden en el lugar correcto.
             </Text>
-            <Button mode="contained" onPress={() => router.replace('/')}>
+            <Button mode="contained" onPress={() => router.replace('/notebooks')}>
               Ir a libretas
             </Button>
           </Surface>
@@ -302,19 +308,27 @@ export function AccountsScreen() {
             </View>
             <Divider />
             <FlatList
-              data={accounts}
+              data={isLoading ? [] : accounts}
               keyExtractor={(item) => item.id}
               renderItem={renderAccount}
-              contentContainerStyle={accounts.length ? styles.listContent : styles.emptyContent}
+              contentContainerStyle={!isLoading && accounts.length ? styles.listContent : styles.emptyContent}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <MaterialCommunityIcons name="wallet-plus-outline" size={36} color={colors.mutedText} />
-                  <Text style={styles.emptyTitle}>Aun no hay cuentas</Text>
-                  <Text style={styles.emptyText}>
-                    Crea una cuenta para organizar saldos, tarjetas o efectivo dentro de esta libreta.
-                  </Text>
-                </View>
+                isLoading ? (
+                  <AppLoadingState colors={colors} label="Cargando cuentas" />
+                ) : (
+                  <View style={styles.emptyState}>
+                    <MaterialCommunityIcons name="wallet-plus-outline" size={36} color={colors.mutedText} />
+                    <Text style={styles.emptyTitle}>
+                      {loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay cuentas'}
+                    </Text>
+                    <Text style={styles.emptyText}>
+                      {loadError
+                        ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
+                        : 'Crea una cuenta para organizar saldos, tarjetas o efectivo dentro de esta libreta.'}
+                    </Text>
+                  </View>
+                )
               }
               ListFooterComponent={
                 <Button
@@ -332,7 +346,8 @@ export function AccountsScreen() {
             />
           </Surface>
         )}
-      </View>
+        </View>
+      </SafeAreaView>
 
       <Portal>
         <Dialog
@@ -389,7 +404,7 @@ export function AccountsScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -574,6 +589,10 @@ const infoStyles = StyleSheet.create({
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
     safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentSafeArea: {
       flex: 1,
       backgroundColor: colors.background,
     },

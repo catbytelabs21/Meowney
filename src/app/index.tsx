@@ -1,5 +1,5 @@
-import { NotebooksScreen } from '@/features/notebooks/NotebooksScreen';
+import { Redirect } from 'expo-router';
 
 export default function IndexRoute() {
-  return <NotebooksScreen />;
+  return <Redirect href="/notebooks" />;
 }

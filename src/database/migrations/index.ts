@@ -7,6 +7,8 @@ import { createBudgetTable } from './006_create_budget_table';
 import { createGoalTable } from './007_create_goal_table';
 import { createSettingsTable } from './008_create_settings_table';
 import { addAccountType } from './009_add_account_type';
+import { addSettingsNotebookEntryDestination } from './010_add_settings_notebook_entry_destination';
+import { addSettingsTransactionsDefaultView } from './011_add_settings_transactions_default_view';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export type Migration = {
@@ -26,4 +28,6 @@ export const migrations: Migration[] = [
   createGoalTable,
   createSettingsTable,
   addAccountType,
+  addSettingsNotebookEntryDestination,
+  addSettingsTransactionsDefaultView,
 ];
