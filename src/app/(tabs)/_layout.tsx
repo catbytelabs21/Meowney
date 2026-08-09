@@ -3,6 +3,10 @@ import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 import { colors } from '@/theme/colors';
 
+export const unstable_settings = {
+  initialRouteName: 'home',
+};
+
 type TabIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 function tabIcon(name: TabIconName) {
@@ -14,6 +18,7 @@ function tabIcon(name: TabIconName) {
 export default function TabsLayout() {
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

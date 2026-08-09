@@ -9,6 +9,10 @@ import { typography } from '@/theme/typography';
 
 SplashScreen.preventAutoHideAsync();
 
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+};
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     ...MaterialCommunityIcons.font,
@@ -27,6 +31,7 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <Stack
+        initialRouteName="(tabs)"
         screenOptions={{
           headerStyle: { backgroundColor: theme.colors.background },
           headerShadowVisible: false,
