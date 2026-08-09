@@ -9,7 +9,7 @@ type RouteScreenProps = {
   title: string;
   actions?: {
     label: string;
-    href: Href;
+    href: Href<string | object>;
   }[];
 };
 

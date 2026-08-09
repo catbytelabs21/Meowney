@@ -3,17 +3,22 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
-import { theme } from '@/theme/theme';
+import { initializeDatabase } from '@/database/database';
+import { darkTheme, lightTheme } from '@/theme/theme';
 import { typography } from '@/theme/typography';
 
 SplashScreen.preventAutoHideAsync();
+initializeDatabase();
 
 export const unstable_settings = {
   initialRouteName: 'index',
 };
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'light' ? lightTheme : darkTheme;
   const [fontsLoaded] = useFonts({
     ...MaterialCommunityIcons.font,
   });

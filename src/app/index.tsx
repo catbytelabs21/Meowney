@@ -1,5 +1,5 @@
-import { RouteScreen } from '@/components/layout/RouteScreen';
+import { NotebooksScreen } from '@/features/notebooks/NotebooksScreen';
 
 export default function IndexRoute() {
-  return <RouteScreen title="Libretas" actions={[{ label: 'Ir a Dashboard', href: '/dashboard' }]} />;
+  return <NotebooksScreen />;
 }

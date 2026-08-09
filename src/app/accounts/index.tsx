@@ -1,5 +1,5 @@
-import { RouteScreen } from '@/components/layout/RouteScreen';
+import { AccountsScreen } from '@/features/accounts/AccountsScreen';
 
 export default function AccountsRoute() {
-  return <RouteScreen title="Cuentas" />;
+  return <AccountsScreen />;
 }
