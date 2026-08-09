@@ -63,6 +63,10 @@ function getColorOptions(colors: MeowneyColors) {
     colors.periwinkle,
     colors.paleIris,
     colors.deepIris,
+    colors.success,
+    colors.warning,
+    colors.error,
+    colors.silver,
   ];
 }
 
@@ -240,7 +244,7 @@ export function NotebooksScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>LIBRETAS</Text>
-          <Text style={styles.title}>Tus libretas</Text>
+          <Text style={styles.title}>Control financiero</Text>
         </View>
 
         <Surface style={styles.table} elevation={0}>
@@ -422,6 +426,7 @@ function NotebookFormDialog({
                       mode="contained-tonal"
                       iconColor={selected ? colors.onPrimary : colors.text}
                       containerColor={selected ? colors.primary : colors.selected}
+                      style={styles.iconChoice}
                       onPress={() => onChange({ ...values, icon })}
                       accessibilityLabel={`Icono ${icon}`}
                     />
@@ -666,7 +671,8 @@ function createStyles(colors: MeowneyColors) {
     form: {
       gap: spacing.ms,
       paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
     },
     fieldGroup: {
       gap: 0,
@@ -684,11 +690,20 @@ function createStyles(colors: MeowneyColors) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    iconChoice: {
+      width: 40,
+      height: 40,
+      margin: 0,
     },
     swatchTray: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'space-between',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,
