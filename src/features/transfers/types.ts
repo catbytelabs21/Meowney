@@ -1,10 +1,10 @@
-export type Notebook = {
+export type Transfer = {
   id: string;
-  name: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
   description: string | null;
-  icon: string | null;
-  color: string | null;
-  currency: string;
+  transferAt: string;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;

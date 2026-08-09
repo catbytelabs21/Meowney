@@ -1,9 +1,14 @@
+export type TransactionType = 'income' | 'expense';
+
 export type Transaction = {
   id: string;
   accountId: string;
-  categoryId: string | null;
+  categoryId: string;
+  type: TransactionType;
   amount: number;
-  occurredAt: string;
+  description: string | null;
+  transactionAt: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 };
