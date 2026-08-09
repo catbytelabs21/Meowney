@@ -16,6 +16,7 @@ import {
   Divider,
   HelperText,
   IconButton,
+  Menu,
   Portal,
   Surface,
   Text,
@@ -29,13 +30,14 @@ import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
-import type { Account } from './types';
+import type { Account, AccountType } from './types';
 
 type AccountIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 type AccountFormValues = {
   name: string;
   description: string;
+  type: AccountType;
   icon: AccountIconName;
   color: string;
 };
@@ -53,6 +55,15 @@ const iconOptions: AccountIconName[] = [
   'chart-line',
 ];
 
+const accountTypeOptions: { label: string; value: AccountType }[] = [
+  { label: 'Efectivo', value: 'CASH' },
+  { label: 'Banco', value: 'BANK_ACCOUNT' },
+  { label: 'Debito', value: 'DEBIT_CARD' },
+  { label: 'Wallet', value: 'DIGITAL_WALLET' },
+  { label: 'Inversion', value: 'INVESTMENT' },
+  { label: 'Otro', value: 'OTHER' },
+];
+
 function getColorOptions(colors: MeowneyColors) {
   return [
     colors.irisGleam,
@@ -61,6 +72,10 @@ function getColorOptions(colors: MeowneyColors) {
     colors.periwinkle,
     colors.paleIris,
     colors.deepIris,
+    colors.success,
+    colors.warning,
+    colors.error,
+    colors.silver,
   ];
 }
 
@@ -68,6 +83,7 @@ function getInitialForm(colors: MeowneyColors): AccountFormValues {
   return {
     name: '',
     description: '',
+    type: 'OTHER',
     icon: 'wallet-outline',
     color: colors.cyanSignal,
   };
@@ -79,6 +95,7 @@ function getFormFromAccount(account: Account, colors: MeowneyColors): AccountFor
   return {
     name: account.name,
     description: account.description ?? '',
+    type: account.type,
     icon: (account.icon as AccountIconName | null) ?? fallback.icon,
     color: account.color ?? fallback.color,
   };
@@ -89,6 +106,7 @@ function toInput(notebookId: string, values: AccountFormValues): AccountInput {
     notebookId,
     name: values.name.trim(),
     description: values.description.trim() || null,
+    type: values.type,
     icon: values.icon,
     color: values.color,
   };
@@ -99,6 +117,10 @@ function formatDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function formatAccountType(type: AccountType) {
+  return accountTypeOptions.find((option) => option.value === type)?.label ?? 'Otro';
 }
 
 export function AccountsScreen() {
@@ -208,9 +230,6 @@ export function AccountsScreen() {
             <Text numberOfLines={1} style={styles.accountName}>
               {item.name}
             </Text>
-            <Text numberOfLines={1} style={styles.accountMeta}>
-              {item.description || 'Sin descripcion'}
-            </Text>
           </View>
         </View>
 
@@ -218,27 +237,30 @@ export function AccountsScreen() {
           <IconButton
             icon="information-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.text}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => setInfoAccount(item)}
             accessibilityLabel="Ver informacion"
           />
           <IconButton
             icon="pencil-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.text}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => openEdit(item)}
             accessibilityLabel="Editar cuenta"
           />
           <IconButton
             icon="trash-can-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.error}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => setDeleteAccount(item)}
             accessibilityLabel="Eliminar cuenta"
           />
@@ -248,7 +270,7 @@ export function AccountsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <Stack.Screen
         options={{
           headerTitleAlign: 'center',
@@ -324,6 +346,7 @@ export function AccountsScreen() {
               <View style={styles.infoList}>
                 <InfoLine label="Titulo" value={infoAccount.name} />
                 <InfoLine label="Descripcion" value={infoAccount.description || 'Sin descripcion'} />
+                <InfoLine label="Tipo" value={formatAccountType(infoAccount.type)} />
                 <InfoLine label="Creacion" value={formatDate(infoAccount.createdAt)} />
                 <InfoLine label="Actualizacion" value={formatDate(infoAccount.updatedAt)} />
               </View>
@@ -409,6 +432,9 @@ function AccountFormDialog({
   onCancel,
   onSave,
 }: AccountFormDialogProps) {
+  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
+  const selectedTypeLabel = formatAccountType(values.type);
+
   return (
     <Dialog visible={visible} onDismiss={onCancel} style={styles.dialog}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -440,6 +466,38 @@ function AccountFormDialog({
             />
 
             <View style={styles.pickerGroup}>
+              <Text style={styles.pickerLabel}>TIPO</Text>
+              <Menu
+                visible={isTypeMenuOpen}
+                onDismiss={() => setIsTypeMenuOpen(false)}
+                contentStyle={styles.typeMenuContent}
+                anchor={
+                  <Button
+                    mode="outlined"
+                    icon="chevron-down"
+                    onPress={() => setIsTypeMenuOpen(true)}
+                    style={styles.typeSelect}
+                    contentStyle={styles.typeSelectContent}
+                    textColor={colors.text}
+                  >
+                    {selectedTypeLabel}
+                  </Button>
+                }
+              >
+                {accountTypeOptions.map((option) => (
+                  <Menu.Item
+                    key={option.value}
+                    title={option.label}
+                    onPress={() => {
+                      onChange({ ...values, type: option.value });
+                      setIsTypeMenuOpen(false);
+                    }}
+                  />
+                ))}
+              </Menu>
+            </View>
+
+            <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>ICONO</Text>
               <View style={styles.choiceGrid}>
                 {iconOptions.map((icon) => {
@@ -452,6 +510,7 @@ function AccountFormDialog({
                       mode="contained-tonal"
                       iconColor={selected ? colors.onPrimary : colors.text}
                       containerColor={selected ? colors.primary : colors.selected}
+                      style={styles.iconChoice}
                       onPress={() => onChange({ ...values, icon })}
                       accessibilityLabel={`Icono ${icon}`}
                     />
@@ -521,7 +580,9 @@ function createStyles(colors: MeowneyColors) {
     container: {
       flex: 1,
       gap: spacing.lg,
-      padding: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg,
       backgroundColor: colors.background,
     },
     header: {
@@ -561,7 +622,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     actionsLabel: {
-      minWidth: 144,
+      minWidth: 104,
       textAlign: 'center',
     },
     listContent: {
@@ -607,15 +668,17 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.bodySize,
       fontWeight: typography.bodyWeight,
     },
-    accountMeta: {
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-    },
     actions: {
-      width: 144,
+      width: 104,
       flexDirection: 'row',
+      gap: spacing.xs,
       justifyContent: 'flex-end',
       paddingRight: spacing.xs,
+    },
+    actionButton: {
+      width: 32,
+      height: 32,
+      margin: 0,
     },
     separator: {
       height: spacing.sm,
@@ -681,7 +744,8 @@ function createStyles(colors: MeowneyColors) {
     form: {
       gap: spacing.ms,
       paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
     },
     fieldGroup: {
       gap: 0,
@@ -699,11 +763,31 @@ function createStyles(colors: MeowneyColors) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    typeSelect: {
+      borderRadius: radii.button,
+    },
+    typeSelectContent: {
+      minHeight: 48,
+      flexDirection: 'row-reverse',
+    },
+    typeMenuContent: {
+      borderRadius: radii.card,
+      backgroundColor: colors.surfaceAlt,
+    },
+    iconChoice: {
+      width: 40,
+      height: 40,
+      margin: 0,
     },
     swatchTray: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'space-between',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,

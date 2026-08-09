@@ -1,11 +1,12 @@
 import { database } from '@/database/database';
-import type { Account } from '@/features/accounts/types';
+import type { Account, AccountType } from '@/features/accounts/types';
 
 type AccountRow = {
   id: string;
   notebook_id: string;
   name: string;
   description: string | null;
+  type: AccountType;
   icon: string | null;
   color: string | null;
   created_at: string;
@@ -17,6 +18,7 @@ export type AccountInput = {
   notebookId: string;
   name: string;
   description: string | null;
+  type: AccountType;
   icon: string | null;
   color: string | null;
 };
@@ -27,6 +29,7 @@ function mapAccount(row: AccountRow): Account {
     notebookId: row.notebook_id,
     name: row.name,
     description: row.description,
+    type: row.type,
     icon: row.icon,
     color: row.color,
     createdAt: row.created_at,
@@ -76,18 +79,20 @@ export const accountRepository = {
           notebook_id,
           name,
           description,
+          "type",
           icon,
           color,
           created_at,
           updated_at,
           archived_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       `,
       account.id,
       account.notebookId,
       account.name,
       account.description,
+      account.type,
       account.icon,
       account.color,
       account.createdAt,
@@ -106,6 +111,7 @@ export const accountRepository = {
         SET
           name = ?,
           description = ?,
+          "type" = ?,
           icon = ?,
           color = ?,
           updated_at = ?
@@ -115,6 +121,7 @@ export const accountRepository = {
       `,
       input.name,
       input.description,
+      input.type,
       input.icon,
       input.color,
       updatedAt,

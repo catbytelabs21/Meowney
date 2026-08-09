@@ -24,7 +24,12 @@ export function initializeDatabase() {
     }
 
     database.withTransactionSync(() => {
-      database.execSync(migration.sql);
+      if (migration.apply) {
+        migration.apply(database);
+      } else if (migration.sql) {
+        database.execSync(migration.sql);
+      }
+
       database.runSync(
         'INSERT INTO schema_migrations (version, name) VALUES (?, ?)',
         migration.version,

@@ -5,6 +5,7 @@ export const accountColumns = {
   notebookId: 'notebook_id',
   name: 'name',
   description: 'description',
+  type: 'type',
   icon: 'icon',
   color: 'color',
   createdAt: 'created_at',

@@ -210,27 +210,30 @@ export function NotebooksScreen() {
           <IconButton
             icon="information-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.text}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => setInfoNotebook(item)}
             accessibilityLabel="Ver informacion"
           />
           <IconButton
             icon="pencil-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.text}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => openEdit(item)}
             accessibilityLabel="Editar libreta"
           />
           <IconButton
             icon="trash-can-outline"
             mode="contained-tonal"
-            size={20}
+            size={18}
             iconColor={colors.error}
             containerColor={colors.selected}
+            style={styles.actionButton}
             onPress={() => setDeleteNotebook(item)}
             accessibilityLabel="Borrar libreta"
           />
@@ -558,7 +561,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     actionsLabel: {
-      minWidth: 144,
+      minWidth: 104,
       textAlign: 'center',
     },
     listContent: {
@@ -613,10 +616,16 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.bodySmallSize,
     },
     actions: {
-      width: 144,
+      width: 104,
       flexDirection: 'row',
+      gap: spacing.xs,
       justifyContent: 'flex-end',
       paddingRight: spacing.xs,
+    },
+    actionButton: {
+      width: 32,
+      height: 32,
+      margin: 0,
     },
     separator: {
       height: spacing.sm,

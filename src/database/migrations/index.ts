@@ -6,11 +6,14 @@ import { createTransferTable } from './005_create_transfer_table';
 import { createBudgetTable } from './006_create_budget_table';
 import { createGoalTable } from './007_create_goal_table';
 import { createSettingsTable } from './008_create_settings_table';
+import { addAccountType } from './009_add_account_type';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
 export type Migration = {
   version: number;
   name: string;
-  sql: string;
+  sql?: string;
+  apply?: (database: SQLiteDatabase) => void;
 };
 
 export const migrations: Migration[] = [
@@ -22,4 +25,5 @@ export const migrations: Migration[] = [
   createBudgetTable,
   createGoalTable,
   createSettingsTable,
+  addAccountType,
 ];
