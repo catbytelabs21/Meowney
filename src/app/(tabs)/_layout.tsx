@@ -1,16 +1,17 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, router, usePathname } from 'expo-router';
 import { useCallback } from 'react';
-import { View, type ColorValue, useColorScheme } from 'react-native';
+import { Easing, View, type ColorValue, useColorScheme } from 'react-native';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
 import { darkColors, lightColors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
 
 export const unstable_settings = {
-  initialRouteName: 'history',
+  initialRouteName: 'balance',
 };
 
 type TabIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -51,42 +52,46 @@ export default function TabsLayout() {
         }
       />
       <Tabs
-        initialRouteName="history"
+        initialRouteName="balance"
         screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedText,
-        tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          display: isNotebooksRoute ? 'none' : 'flex',
-          position: 'absolute',
-        },
-        sceneStyle: {
-          backgroundColor: colors.background,
-        },
+          animation: 'shift',
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.mutedText,
+          tabBarStyle: {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            display: isNotebooksRoute ? 'none' : 'flex',
+            position: 'absolute',
+          },
+          sceneStyle: {
+            backgroundColor: colors.background,
+          },
+          transitionSpec: {
+            animation: 'timing',
+            config: {
+              duration: motion.tabTransitionDuration,
+              easing: Easing.out(Easing.cubic),
+            },
+          },
         }}
       >
-      <Tabs.Screen
-        name="notebooks"
-        options={{ href: null, title: 'Libretas', tabBarIcon: tabIcon('notebook-outline') }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{ title: 'Historial', tabBarIcon: tabIcon('history') }}
-      />
-      <Tabs.Screen
-        name="transactions"
-        options={{ title: 'Movimientos', tabBarIcon: tabIcon('swap-horizontal') }}
-      />
-      <Tabs.Screen
-        name="budgets"
-        options={{ title: 'Presupuestos', tabBarIcon: tabIcon('chart-donut') }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{ title: 'Mas', tabBarIcon: tabIcon('dots-horizontal-circle-outline') }}
-      />
+        <Tabs.Screen
+          name="notebooks"
+          options={{ href: null, title: 'Libretas', tabBarIcon: tabIcon('notebook-outline') }}
+        />
+        <Tabs.Screen
+          name="balance"
+          options={{ title: 'Balance', tabBarIcon: tabIcon('scale-balance') }}
+        />
+        <Tabs.Screen
+          name="history-movements"
+          options={{ title: 'Movimientos', tabBarIcon: tabIcon('format-list-bulleted') }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{ title: 'Mas', tabBarIcon: tabIcon('dots-horizontal-circle-outline') }}
+        />
       </Tabs>
     </View>
   );

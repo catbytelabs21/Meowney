@@ -3,6 +3,7 @@ export type AccountType =
   | 'BANK_ACCOUNT'
   | 'DEBIT_CARD'
   | 'DIGITAL_WALLET'
+  | 'SAVINGS'
   | 'INVESTMENT'
   | 'OTHER';
 

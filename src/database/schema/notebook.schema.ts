@@ -7,6 +7,7 @@ export const notebookColumns = {
   icon: 'icon',
   color: 'color',
   currency: 'currency',
+  isDefault: 'is_default',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   archivedAt: 'archived_at',

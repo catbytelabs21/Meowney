@@ -11,10 +11,9 @@ import {
 } from 'react-native';
 import { IconButton, Portal, Surface, Switch, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { settingsRepository } from '@/database/repositories/settings.repository';
-import type { Settings, TransactionsDefaultView } from '@/features/settings/types';
 import { useAppStore } from '@/stores/app.store';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -26,19 +25,15 @@ export function AppSettingsPanel() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isOpen = useAppStore((state) => state.isSettingsPanelOpen);
   const closeSettingsPanel = useAppStore((state) => state.closeSettingsPanel);
-  const [settings, setSettings] = useState<Settings>(() => settingsRepository.getOrCreate());
+  const opensDefaultNotebookOnLaunch = useAppStore((state) => state.opensDefaultNotebookOnLaunch);
+  const setOpensDefaultNotebookOnLaunch = useAppStore((state) => state.setOpensDefaultNotebookOnLaunch);
   const [isMounted, setIsMounted] = useState(isOpen);
   const progress = useRef(new Animated.Value(isOpen ? 1 : 0)).current;
   const panelWidth = Math.min(windowWidth * 0.86, 380);
 
-  const reloadSettings = () => {
-    setSettings(settingsRepository.getOrCreate());
-  };
-
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true);
-      reloadSettings();
     }
   }, [isOpen]);
 
@@ -46,7 +41,7 @@ export function AppSettingsPanel() {
     if (isOpen) {
       Animated.timing(progress, {
         toValue: 1,
-        duration: 220,
+        duration: motion.settingsPanelOpenDuration,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
@@ -55,7 +50,7 @@ export function AppSettingsPanel() {
 
     Animated.timing(progress, {
       toValue: 0,
-      duration: 180,
+      duration: motion.settingsPanelCloseDuration,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -66,18 +61,7 @@ export function AppSettingsPanel() {
   }, [isOpen, progress]);
 
   const updateUsesDefaultNotebook = (usesDefaultNotebook: boolean) => {
-    settingsRepository.setLaunchDestination(usesDefaultNotebook ? 'dashboard' : 'notebooks');
-    reloadSettings();
-  };
-
-  const updateEntersTabs = (entersTabs: boolean) => {
-    settingsRepository.setNotebookEntryDestination(entersTabs ? 'tabs' : 'dashboard');
-    reloadSettings();
-  };
-
-  const updateTransactionsDefaultView = (transactionsDefaultView: TransactionsDefaultView) => {
-    settingsRepository.setTransactionsDefaultView(transactionsDefaultView);
-    reloadSettings();
+    setOpensDefaultNotebookOnLaunch(usesDefaultNotebook);
   };
 
   if (!isMounted) {
@@ -154,50 +138,14 @@ export function AppSettingsPanel() {
                   styles={styles}
                   title="Al abrir Meowney"
                   description={
-                    settings.launchDestination === 'notebooks'
-                      ? 'Abrir libretas'
-                      : 'Abrir libreta predeterminada'
+                    opensDefaultNotebookOnLaunch
+                      ? 'Abrir libreta predeterminada'
+                      : 'Abrir libretas'
                   }
                   trailing={
                     <Switch
-                      value={settings.launchDestination !== 'notebooks'}
+                      value={opensDefaultNotebookOnLaunch}
                       onValueChange={updateUsesDefaultNotebook}
-                    />
-                  }
-                />
-
-                <SettingsRow
-                  styles={styles}
-                  title="Al entrar a libreta"
-                  description={
-                    settings.notebookEntryDestination === 'tabs'
-                      ? 'Abrir tabs'
-                      : 'Abrir dashboard'
-                  }
-                  trailing={
-                    <Switch
-                      value={settings.notebookEntryDestination === 'tabs'}
-                      onValueChange={updateEntersTabs}
-                    />
-                  }
-                />
-              </SettingsSection>
-
-              <SettingsSection label="Movimientos" styles={styles}>
-                <SettingsRow
-                  styles={styles}
-                  title="Vista inicial"
-                  description={
-                    settings.transactionsDefaultView === 'calendar'
-                      ? 'Abrir calendario'
-                      : 'Abrir listado'
-                  }
-                  trailing={
-                    <Switch
-                      value={settings.transactionsDefaultView === 'calendar'}
-                      onValueChange={(isCalendar) =>
-                        updateTransactionsDefaultView(isCalendar ? 'calendar' : 'list')
-                      }
                     />
                   }
                 />

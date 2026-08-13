@@ -1,4 +1,5 @@
 export type TransactionType = 'income' | 'expense';
+export type MovementType = TransactionType | 'transfer';
 
 export type Transaction = {
   id: string;
@@ -11,4 +12,28 @@ export type Transaction = {
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
+};
+
+export type Transfer = {
+  id: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  description: string | null;
+  transferAt: string;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+};
+
+export type MovementListItem = {
+  id: string;
+  type: MovementType;
+  amount: number;
+  description: string | null;
+  occurredAt: string;
+  accountName: string;
+  toAccountName: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

@@ -1,10 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, View, useColorScheme } from 'react-native';
 import { Surface, Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppStore } from '@/stores/app.store';
+import { AppScreen } from '@/components/layout/AppScreen';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
@@ -20,25 +19,9 @@ type MoreItem = {
 };
 
 export default function MoreRoute() {
-  const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const colorScheme = useColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const primaryItems: MoreItem[] = [
-    {
-      description: 'Resumen de la libreta',
-      icon: 'view-dashboard-outline',
-      label: 'Dashboard',
-      onPress: () =>
-        router.push({
-          pathname: '/dashboard',
-          params: selectedNotebookId
-            ? { from: 'more', notebookId: selectedNotebookId }
-            : { from: 'more' },
-        }),
-    },
-  ];
 
   const managementItems: MoreItem[] = [
     {
@@ -54,34 +37,17 @@ export default function MoreRoute() {
       onPress: () => router.push('/categories'),
     },
     {
-      description: 'Objetivos y reservas',
-      icon: 'piggy-bank-outline',
-      label: 'Ahorros',
-      onPress: () => router.push('/savings'),
-    },
-    {
-      description: 'Compromisos pendientes',
-      icon: 'receipt-text-outline',
-      label: 'Deudas',
-      onPress: () => router.push('/debts'),
+      description: 'Limites por categoria',
+      icon: 'chart-donut',
+      label: 'Presupuestos',
+      onPress: () => router.push('/budgets'),
     },
   ];
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>MAS</Text>
-          <Text style={styles.title}>Herramientas</Text>
-        </View>
-
-        <MoreSection items={primaryItems} label="LIBRETA" styles={styles} colors={colors} />
-        <MoreSection items={managementItems} label="GESTION" styles={styles} colors={colors} />
-      </ScrollView>
-    </SafeAreaView>
+    <AppScreen eyebrow="MAS" title="Herramientas" scroll>
+      <MoreSection items={managementItems} label="GESTION" styles={styles} colors={colors} />
+    </AppScreen>
   );
 }
 
@@ -133,7 +99,8 @@ function createStyles(colors: MeowneyColors) {
     },
     container: {
       gap: spacing.lg,
-      padding: spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
       paddingBottom: spacing.xl,
       backgroundColor: colors.background,
     },
@@ -150,7 +117,7 @@ function createStyles(colors: MeowneyColors) {
       color: colors.text,
       fontSize: typography.headingSize,
       fontWeight: typography.titleWeight,
-      lineHeight: 38,
+      lineHeight: typography.headingLineHeight,
     },
     section: {
       gap: spacing.sm,

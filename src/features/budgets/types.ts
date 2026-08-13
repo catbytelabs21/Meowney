@@ -11,3 +11,9 @@ export type Budget = {
   updatedAt: string;
   archivedAt: string | null;
 };
+
+export type BudgetListItem = Budget & {
+  categoryColor: string | null;
+  categoryIcon: string | null;
+  categoryName: string;
+};

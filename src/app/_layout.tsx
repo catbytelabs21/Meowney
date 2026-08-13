@@ -7,6 +7,7 @@ import { StatusBar, View, useColorScheme } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppSettingsPanel } from '@/components/layout/AppSettingsPanel';
 import { initializeDatabase } from '@/database/database';
+import { motion } from '@/theme/motion';
 import { darkTheme, lightTheme } from '@/theme/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -60,23 +61,22 @@ export default function RootLayout() {
           <Stack
             initialRouteName="index"
             screenOptions={{
-              animation: 'none',
+              animation: 'ios_from_right',
+              animationDuration: motion.screenTransitionDuration,
+              animationMatchesGesture: true,
+              gestureEnabled: true,
               headerShown: false,
               contentStyle: { backgroundColor: theme.colors.background },
             }}
           >
             <Stack.Screen name="index" />
-            <Stack.Screen name="dashboard" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="accounts/index" />
             <Stack.Screen name="accounts/create" />
             <Stack.Screen name="accounts/[id]" />
-            <Stack.Screen name="transactions/create" />
-            <Stack.Screen name="transactions/[id]" />
+            <Stack.Screen name="budgets/index" />
             <Stack.Screen name="categories/index" />
             <Stack.Screen name="categories/create" />
-            <Stack.Screen name="savings/index" />
-            <Stack.Screen name="debts/index" />
           </Stack>
           <AppSettingsPanel />
         </View>

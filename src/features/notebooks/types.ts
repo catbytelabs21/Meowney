@@ -5,6 +5,7 @@ export type Notebook = {
   icon: string | null;
   color: string | null;
   currency: string;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;

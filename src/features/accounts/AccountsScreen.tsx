@@ -1,19 +1,16 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
   useColorScheme,
 } from 'react-native';
 import {
   Button,
-  Dialog,
-  Divider,
   HelperText,
   IconButton,
   Menu,
@@ -22,9 +19,12 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
+import { AppScreen } from '@/components/layout/AppScreen';
+import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
+import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { accountRepository, type AccountInput } from '@/database/repositories/account.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
@@ -34,6 +34,7 @@ import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import { formatAppDateTime } from '@/utils/dateFormat';
 import type { Account, AccountType } from './types';
 
 type AccountIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -64,6 +65,7 @@ const accountTypeOptions: { label: string; value: AccountType }[] = [
   { label: 'Banco', value: 'BANK_ACCOUNT' },
   { label: 'Debito', value: 'DEBIT_CARD' },
   { label: 'Wallet', value: 'DIGITAL_WALLET' },
+  { label: 'Ahorro', value: 'SAVINGS' },
   { label: 'Inversion', value: 'INVESTMENT' },
   { label: 'Otro', value: 'OTHER' },
 ];
@@ -117,10 +119,7 @@ function toInput(notebookId: string, values: AccountFormValues): AccountInput {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
+  return formatAppDateTime(value);
 }
 
 function formatAccountType(type: AccountType) {
@@ -138,34 +137,42 @@ export function AccountsScreen() {
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
+  const stableNotebookName = useMemo(() => {
+    if (selectedNotebookName) {
+      return selectedNotebookName;
+    }
+
+    return activeNotebookId ? notebookRepository.getActiveById(activeNotebookId)?.name ?? null : null;
+  }, [activeNotebookId, selectedNotebookName]);
 
   const loadAccountsData = useCallback(() => {
     if (!activeNotebookId) {
-      return { accounts: [], notebookName: selectedNotebookName };
+      return { accounts: [], notebookName: stableNotebookName };
     }
 
     return {
       accounts: accountRepository.listActiveByNotebook(activeNotebookId),
-      notebookName: selectedNotebookName ?? notebookRepository.getActiveById(activeNotebookId)?.name ?? null,
+      notebookName: stableNotebookName,
     };
-  }, [activeNotebookId, selectedNotebookName]);
+  }, [activeNotebookId, stableNotebookName]);
   const {
     data: accountsData,
     error: loadError,
     isLoading,
     reload: reloadAccounts,
-  } = useDeferredQuery(loadAccountsData, { accounts: [], notebookName: selectedNotebookName });
+  } = useDeferredQuery(loadAccountsData, { accounts: [], notebookName: stableNotebookName });
   const { accounts, notebookName: activeNotebookName } = accountsData;
   const [infoAccount, setInfoAccount] = useState<Account | null>(null);
   const [deleteAccount, setDeleteAccount] = useState<Account | null>(null);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [actionMenuAccountId, setActionMenuAccountId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
 
   useEffect(() => {
     if (routeNotebookId && routeNotebookId !== selectedNotebookId) {
-      setSelectedNotebookId(routeNotebookId);
+      setSelectedNotebookId(routeNotebookId, notebookRepository.getActiveById(routeNotebookId)?.name ?? null);
     }
   }, [routeNotebookId, selectedNotebookId, setSelectedNotebookId]);
 
@@ -222,8 +229,13 @@ export function AccountsScreen() {
     const color = item.color ?? colors.cyanSignal;
 
     return (
-      <Surface style={styles.row} elevation={0}>
-        <View style={styles.accountIdentity}>
+      <Surface style={styles.accountRow} elevation={0}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver cuenta"
+          onPress={() => setInfoAccount(item)}
+          style={({ pressed }) => [styles.accountContent, pressed && styles.accountPressed]}
+        >
           <View style={[styles.accountIconWrap, { backgroundColor: color }]}>
             <MaterialCommunityIcons name={iconName} size={20} color={colors.void} />
           </View>
@@ -231,41 +243,52 @@ export function AccountsScreen() {
             <Text numberOfLines={1} style={styles.accountName}>
               {item.name}
             </Text>
+            <Text numberOfLines={1} style={styles.accountMeta}>
+              {formatAccountType(item.type)}
+            </Text>
           </View>
-        </View>
+        </Pressable>
 
-        <View style={styles.actions}>
-          <IconButton
-            icon="information-outline"
-            mode="contained-tonal"
-            size={18}
-            iconColor={colors.text}
-            containerColor={colors.selected}
-            style={styles.actionButton}
-            onPress={() => setInfoAccount(item)}
-            accessibilityLabel="Ver informacion"
+        <AppActionMenu
+          visible={actionMenuAccountId === item.id}
+          onDismiss={() => setActionMenuAccountId(null)}
+          contentStyle={styles.menuContent}
+          anchor={
+            <IconButton
+              accessibilityLabel="Acciones de la cuenta"
+              icon="dots-vertical"
+              iconColor={colors.mutedText}
+              size={18}
+              style={styles.accountActionsButton}
+              onPress={() => setActionMenuAccountId(item.id)}
+            />
+          }
+        >
+          <Menu.Item
+            leadingIcon="eye-outline"
+            title="Ver"
+            onPress={() => {
+              setActionMenuAccountId(null);
+              setInfoAccount(item);
+            }}
           />
-          <IconButton
-            icon="pencil-outline"
-            mode="contained-tonal"
-            size={18}
-            iconColor={colors.text}
-            containerColor={colors.selected}
-            style={styles.actionButton}
-            onPress={() => openEdit(item)}
-            accessibilityLabel="Editar cuenta"
+          <Menu.Item
+            leadingIcon="pencil-outline"
+            title="Editar"
+            onPress={() => {
+              setActionMenuAccountId(null);
+              openEdit(item);
+            }}
           />
-          <IconButton
-            icon="trash-can-outline"
-            mode="contained-tonal"
-            size={18}
-            iconColor={colors.error}
-            containerColor={colors.selected}
-            style={styles.actionButton}
-            onPress={() => setDeleteAccount(item)}
-            accessibilityLabel="Eliminar cuenta"
+          <Menu.Item
+            leadingIcon="trash-can-outline"
+            title="Eliminar"
+            onPress={() => {
+              setActionMenuAccountId(null);
+              setDeleteAccount(item);
+            }}
           />
-        </View>
+        </AppActionMenu>
       </Surface>
     );
   };
@@ -273,22 +296,16 @@ export function AccountsScreen() {
   return (
     <View style={styles.safeArea}>
       <AppHeader
-        title={activeNotebookName ?? 'Cuentas'}
+        title={activeNotebookName ?? stableNotebookName ?? 'Meowney'}
         left={
           <AppHeaderActionButton
             accessibilityLabel="Regresar a mas"
             icon="arrow-left"
-            onPress={() => router.push('/more')}
+            onPress={() => router.back()}
           />
         }
       />
-      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.contentSafeArea}>
-        <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>CUENTAS</Text>
-          <Text style={styles.title}>Activos y tarjetas</Text>
-        </View>
-
+      <AppScreen eyebrow="CUENTAS" title="Activos y tarjetas">
         {!activeNotebookId ? (
           <Surface style={styles.missingNotebook} elevation={0}>
             <MaterialCommunityIcons name="book-alert-outline" size={36} color={colors.mutedText} />
@@ -301,13 +318,9 @@ export function AccountsScreen() {
             </Button>
           </Surface>
         ) : (
-          <Surface style={styles.table} elevation={0}>
-            <View style={styles.tableHeader}>
-              <Text style={styles.columnLabel}>ICONO Y NOMBRE</Text>
-              <Text style={[styles.columnLabel, styles.actionsLabel]}>ACCIONES</Text>
-            </View>
-            <Divider />
+          <>
             <FlatList
+              style={styles.list}
               data={isLoading ? [] : accounts}
               keyExtractor={(item) => item.id}
               renderItem={renderAccount}
@@ -330,47 +343,44 @@ export function AccountsScreen() {
                   </View>
                 )
               }
-              ListFooterComponent={
-                <Button
-                  mode="contained"
-                  icon="plus"
-                  onPress={openCreate}
-                  buttonColor={colors.primary}
-                  textColor={colors.onPrimary}
-                  style={styles.createButton}
-                  contentStyle={styles.createButtonContent}
-                >
-                  Nueva cuenta
-                </Button>
-              }
+              showsVerticalScrollIndicator={false}
             />
-          </Surface>
+            <View style={styles.fabWrap} pointerEvents="box-none">
+              <IconButton
+                accessibilityLabel="Nueva cuenta"
+                icon="plus"
+                mode="contained"
+                iconColor={colors.onPrimary}
+                containerColor={colors.primary}
+                size={28}
+                style={styles.fab}
+                onPress={openCreate}
+              />
+            </View>
+          </>
         )}
-        </View>
-      </SafeAreaView>
+      </AppScreen>
 
       <Portal>
-        <Dialog
+        <AppContentDialog
           visible={Boolean(infoAccount)}
+          title="Detalle"
+          titleIcon="eye-outline"
+          titleIconColor={colors.text}
+          contentContainerStyle={styles.infoDialogContent}
+          onAction={() => setInfoAccount(null)}
           onDismiss={() => setInfoAccount(null)}
-          style={styles.dialog}
         >
-          <Dialog.Title style={styles.dialogTitle}>Informacion</Dialog.Title>
-          <Dialog.Content>
-            {infoAccount ? (
-              <View style={styles.infoList}>
-                <InfoLine label="Titulo" value={infoAccount.name} />
-                <InfoLine label="Descripcion" value={infoAccount.description || 'Sin descripcion'} />
-                <InfoLine label="Tipo" value={formatAccountType(infoAccount.type)} />
-                <InfoLine label="Creacion" value={formatDate(infoAccount.createdAt)} />
-                <InfoLine label="Actualizacion" value={formatDate(infoAccount.updatedAt)} />
-              </View>
-            ) : null}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setInfoAccount(null)}>Cerrar</Button>
-          </Dialog.Actions>
-        </Dialog>
+          {infoAccount ? (
+            <>
+              <AppInfoLine label="Titulo" value={infoAccount.name} />
+              <AppInfoLine label="Descripcion" value={infoAccount.description || 'Sin descripcion'} />
+              <AppInfoLine label="Tipo" value={formatAccountType(infoAccount.type)} />
+              <AppInfoLine label="Creacion" value={formatDate(infoAccount.createdAt)} />
+              <AppInfoLine label="Actualizacion" value={formatDate(infoAccount.updatedAt)} />
+            </>
+          ) : null}
+        </AppContentDialog>
 
         <AccountFormDialog
           colors={colors}
@@ -385,39 +395,14 @@ export function AccountsScreen() {
           onSave={saveForm}
         />
 
-        <Dialog
+        <AppConfirmDialog
           visible={Boolean(deleteAccount)}
-          onDismiss={() => setDeleteAccount(null)}
-          style={styles.dialog}
-        >
-          <Dialog.Title style={styles.dialogTitle}>Eliminar cuenta</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.dialogText}>
-              Esta accion archivara la cuenta y dejara de mostrarse en el listado.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDeleteAccount(null)}>Cancelar</Button>
-            <Button textColor={colors.error} onPress={confirmDelete}>
-              Confirmar
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+          title="Eliminar cuenta"
+          message="Esta accion archivara la cuenta y dejara de mostrarse en el listado."
+          onCancel={() => setDeleteAccount(null)}
+          onConfirm={confirmDelete}
+        />
       </Portal>
-    </View>
-  );
-}
-
-type InfoLineProps = {
-  label: string;
-  value: string;
-};
-
-function InfoLine({ label, value }: InfoLineProps) {
-  return (
-    <View style={infoStyles.row}>
-      <Text style={infoStyles.label}>{label}</Text>
-      <Text style={infoStyles.value}>{value}</Text>
     </View>
   );
 }
@@ -447,144 +432,115 @@ function AccountFormDialog({
   onCancel,
   onSave,
 }: AccountFormDialogProps) {
+  const formScrollRef = useRef<ScrollView>(null);
   const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const selectedTypeLabel = formatAccountType(values.type);
 
   return (
-    <Dialog visible={visible} onDismiss={onCancel} style={styles.dialog}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Dialog.Title style={styles.dialogTitle}>{title}</Dialog.Title>
-        <Dialog.ScrollArea style={styles.formScrollArea}>
-          <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <TextInput
-                mode="outlined"
-                label="Nombre"
-                value={values.name}
-                onChangeText={(name) => onChange({ ...values, name })}
-                error={showNameError}
-              />
-              {showNameError ? (
-                <HelperText type="error" visible>
-                  El nombre es obligatorio.
-                </HelperText>
-              ) : null}
-            </View>
+    <AppFormDialog
+      visible={visible}
+      title={title}
+      contentContainerStyle={styles.form}
+      scrollRef={formScrollRef}
+      titleIcon={values.icon}
+      titleIconColor={values.color}
+      onCancel={onCancel}
+      onSave={onSave}
+    >
+      <View style={styles.fieldGroup}>
+        <Text style={styles.pickerLabel}>NOMBRE</Text>
+        <TextInput
+          mode="outlined"
+          placeholder="Ej. Tarjeta principal"
+          value={values.name}
+          onChangeText={(name) => onChange({ ...values, name })}
+          error={showNameError}
+        />
+        {showNameError ? (
+          <HelperText type="error" visible>
+            El nombre es obligatorio.
+          </HelperText>
+        ) : null}
+      </View>
 
-            <TextInput
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>DESCRIPCION</Text>
+        <AppDescriptionInput
+          placeholder="Ej. Cuenta para pagos diarios"
+          scrollRef={formScrollRef}
+          value={values.description}
+          onChangeText={(description) => onChange({ ...values, description })}
+        />
+      </View>
+
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>TIPO</Text>
+        <Menu
+          visible={isTypeMenuOpen}
+          onDismiss={() => setIsTypeMenuOpen(false)}
+          contentStyle={styles.typeMenuContent}
+          anchor={
+            <Button
               mode="outlined"
-              label="Descripcion"
-              value={values.description}
-              multiline
-              numberOfLines={3}
-              onChangeText={(description) => onChange({ ...values, description })}
+              icon="chevron-down"
+              onPress={() => setIsTypeMenuOpen(true)}
+              style={styles.typeSelect}
+              contentStyle={styles.typeSelectContent}
+              textColor={colors.text}
+            >
+              {selectedTypeLabel}
+            </Button>
+          }
+        >
+          {accountTypeOptions.map((option) => (
+            <Menu.Item
+              key={option.value}
+              title={option.label}
+              onPress={() => {
+                onChange({ ...values, type: option.value });
+                setIsTypeMenuOpen(false);
+              }}
             />
+          ))}
+        </Menu>
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>TIPO</Text>
-              <Menu
-                visible={isTypeMenuOpen}
-                onDismiss={() => setIsTypeMenuOpen(false)}
-                contentStyle={styles.typeMenuContent}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    icon="chevron-down"
-                    onPress={() => setIsTypeMenuOpen(true)}
-                    style={styles.typeSelect}
-                    contentStyle={styles.typeSelectContent}
-                    textColor={colors.text}
-                  >
-                    {selectedTypeLabel}
-                  </Button>
-                }
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>ICONO</Text>
+        <AppIconPickerGrid
+          columns={5}
+          icons={iconOptions}
+          selectedIcon={values.icon}
+          onSelect={(icon) => onChange({ ...values, icon })}
+        />
+      </View>
+
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>COLOR</Text>
+        <View style={styles.swatchTray}>
+          {colorOptions.map((color) => {
+            const selected = values.color === color;
+            return (
+              <Pressable
+                key={color}
+                accessibilityRole="button"
+                accessibilityLabel={`Color ${color}`}
+                onPress={() => onChange({ ...values, color })}
+                style={[
+                  styles.colorChoice,
+                  { backgroundColor: color },
+                  selected && styles.colorChoiceSelected,
+                ]}
               >
-                {accountTypeOptions.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    title={option.label}
-                    onPress={() => {
-                      onChange({ ...values, type: option.value });
-                      setIsTypeMenuOpen(false);
-                    }}
-                  />
-                ))}
-              </Menu>
-            </View>
-
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>ICONO</Text>
-              <View style={styles.choiceGrid}>
-                {iconOptions.map((icon) => {
-                  const selected = values.icon === icon;
-                  return (
-                    <IconButton
-                      key={icon}
-                      icon={icon}
-                      size={22}
-                      mode="contained-tonal"
-                      iconColor={selected ? colors.onPrimary : colors.text}
-                      containerColor={selected ? colors.primary : colors.selected}
-                      style={styles.iconChoice}
-                      onPress={() => onChange({ ...values, icon })}
-                      accessibilityLabel={`Icono ${icon}`}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>COLOR</Text>
-              <View style={styles.swatchTray}>
-                {colorOptions.map((color) => {
-                  const selected = values.color === color;
-                  return (
-                    <Pressable
-                      key={color}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Color ${color}`}
-                      onPress={() => onChange({ ...values, color })}
-                      style={[
-                        styles.colorChoice,
-                        { backgroundColor: color },
-                        selected && styles.colorChoiceSelected,
-                      ]}
-                    >
-                      {selected ? (
-                        <MaterialCommunityIcons name="check" size={18} color={colors.void} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        </Dialog.ScrollArea>
-        <Dialog.Actions>
-          <Button onPress={onCancel}>Cancelar</Button>
-          <Button onPress={onSave}>Guardar</Button>
-        </Dialog.Actions>
-      </KeyboardAvoidingView>
-    </Dialog>
+                {selected ? <MaterialCommunityIcons name="check" size={18} color={colors.void} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </AppFormDialog>
   );
 }
-
-const infoStyles = StyleSheet.create({
-  row: {
-    gap: spacing.xs,
-  },
-  label: {
-    fontSize: typography.monoLabelSize,
-    fontWeight: typography.mediumWeight,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontSize: typography.bodySize,
-    lineHeight: 24,
-  },
-});
 
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
@@ -617,59 +573,41 @@ function createStyles(colors: MeowneyColors) {
       color: colors.text,
       fontSize: typography.headingSize,
       fontWeight: typography.titleWeight,
-      lineHeight: 38,
+      lineHeight: typography.headingLineHeight,
     },
-    table: {
+    list: {
       flex: 1,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.card,
-      backgroundColor: colors.surface,
-    },
-    tableHeader: {
-      minHeight: 48,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: spacing.md,
-    },
-    columnLabel: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    actionsLabel: {
-      minWidth: 104,
-      textAlign: 'center',
     },
     listContent: {
-      padding: spacing.md,
-      paddingBottom: spacing.xl,
+      flexGrow: 1,
+      paddingBottom: 96,
     },
     emptyContent: {
       flexGrow: 1,
-      padding: spacing.md,
-      paddingBottom: spacing.xl,
+      paddingBottom: 96,
     },
-    row: {
-      minHeight: 72,
+    accountRow: {
+      minHeight: 68,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.sm,
-      borderRadius: radii.card,
-      backgroundColor: colors.surfaceAlt,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: colors.pressed,
+      borderRadius: radii.input,
+      backgroundColor: colors.background,
     },
-    accountIdentity: {
-      minHeight: 72,
+    accountContent: {
       flex: 1,
+      minHeight: 68,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.ms,
+      gap: spacing.md,
+      paddingVertical: spacing.sm + 2,
       paddingLeft: spacing.md,
-      paddingRight: spacing.sm,
+      paddingRight: spacing.xs,
+    },
+    accountPressed: {
+      backgroundColor: colors.selected,
     },
     accountIconWrap: {
       width: 40,
@@ -681,23 +619,25 @@ function createStyles(colors: MeowneyColors) {
     nameCopy: {
       flex: 1,
       minWidth: 0,
+      gap: 3,
     },
     accountName: {
       color: colors.text,
       fontSize: typography.bodySize,
       fontWeight: typography.bodyWeight,
+      lineHeight: 22,
     },
-    actions: {
-      width: 104,
-      flexDirection: 'row',
-      gap: spacing.xs,
-      justifyContent: 'flex-end',
-      paddingRight: spacing.xs,
+    accountMeta: {
+      color: colors.mutedText,
+      fontSize: typography.bodySmallSize,
+      lineHeight: 20,
     },
-    actionButton: {
-      width: 32,
-      height: 32,
+    accountActionsButton: {
+      width: 36,
+      height: 36,
       margin: 0,
+      marginRight: spacing.xs,
+      borderRadius: radii.navItem,
     },
     separator: {
       height: spacing.sm,
@@ -708,6 +648,10 @@ function createStyles(colors: MeowneyColors) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.card,
+      backgroundColor: colors.surface,
       padding: spacing.lg,
     },
     missingNotebook: {
@@ -733,32 +677,28 @@ function createStyles(colors: MeowneyColors) {
       lineHeight: 22,
       textAlign: 'center',
     },
-    createButton: {
-      marginTop: spacing.md,
-      borderRadius: radii.button,
+    fabWrap: {
+      position: 'absolute',
+      right: spacing.lg,
+      bottom: 88,
+      alignItems: 'flex-end',
+      gap: spacing.sm,
     },
-    createButtonContent: {
-      minHeight: 48,
+    fab: {
+      width: 56,
+      height: 56,
+      margin: 0,
+      opacity: 0.72,
+      borderRadius: 28,
     },
-    dialog: {
+    menuContent: {
       borderRadius: radii.card,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.surfaceAlt,
     },
-    dialogTitle: {
-      color: colors.text,
-      fontWeight: typography.bodyWeight,
-    },
-    dialogText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySize,
-      lineHeight: 24,
-    },
-    infoList: {
+    infoDialogContent: {
       gap: spacing.md,
-    },
-    formScrollArea: {
-      borderColor: colors.border,
-      paddingHorizontal: 0,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
     },
     form: {
       gap: spacing.ms,
@@ -767,7 +707,7 @@ function createStyles(colors: MeowneyColors) {
       paddingBottom: spacing.md,
     },
     fieldGroup: {
-      gap: 0,
+      gap: spacing.sm,
     },
     pickerGroup: {
       gap: spacing.sm,
@@ -777,13 +717,6 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.monoLabelSize,
       fontWeight: typography.mediumWeight,
       letterSpacing: 0.2,
-    },
-    choiceGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'space-between',
     },
     typeSelect: {
       borderRadius: radii.button,
@@ -795,11 +728,6 @@ function createStyles(colors: MeowneyColors) {
     typeMenuContent: {
       borderRadius: radii.card,
       backgroundColor: colors.surfaceAlt,
-    },
-    iconChoice: {
-      width: 40,
-      height: 40,
-      margin: 0,
     },
     swatchTray: {
       flexDirection: 'row',

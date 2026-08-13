@@ -11,3 +11,7 @@ export type Goal = {
   updatedAt: string;
   archivedAt: string | null;
 };
+
+export type GoalListItem = Goal & {
+  accountName: string;
+};
