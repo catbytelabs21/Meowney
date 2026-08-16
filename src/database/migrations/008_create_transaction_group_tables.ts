@@ -1,7 +1,7 @@
 import type { Migration } from './index';
 
 export const createTransactionGroupTables: Migration = {
-  version: 13,
+  version: 8,
   name: 'create_transaction_group_tables',
   sql: `
     CREATE TABLE IF NOT EXISTS transaction_group (

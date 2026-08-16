@@ -2,13 +2,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Dialog, Divider, HelperText, IconButton, Menu, Portal, Surface, Text, TextInput } from 'react-native-paper';
+import { Button, Divider, HelperText, IconButton, Portal, Surface, Text, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
-import { AppFormDialog } from '@/components/ui/AppFormDialog';
+import { AppEmptyState } from '@/components/ui/AppEmptyState';
+import { AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
+import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
+import {
+  GOAL_ICON_OPTIONS,
+  getGoalColorOptions,
+  type GoalIconName,
+} from '@/constants/goals';
 import { accountRepository } from '@/database/repositories/account.repository';
 import { goalRepository, type GoalInput } from '@/database/repositories/goal.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
@@ -21,8 +29,6 @@ import { typography } from '@/theme/typography';
 import { formatAppDate, formatAppDateTime } from '@/utils/dateFormat';
 import type { Account } from '@/features/accounts/types';
 import type { GoalListItem } from './types';
-
-type GoalIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 type SavingFormValues = {
   accountId: string;
@@ -40,19 +46,6 @@ type SavingsData = {
   goals: GoalListItem[];
 };
 
-const iconOptions: GoalIconName[] = [
-  'piggy-bank-outline',
-  'home-outline',
-  'airplane',
-  'car-outline',
-  'school-outline',
-  'gift-outline',
-  'shield-check-outline',
-  'laptop',
-  'heart-outline',
-  'star-outline',
-];
-
 function toDateKey(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -64,21 +57,6 @@ function getDefaultTargetDate() {
   const date = new Date();
   date.setMonth(date.getMonth() + 6);
   return toDateKey(date);
-}
-
-function getColorOptions(colors: MeowneyColors) {
-  return [
-    colors.irisGleam,
-    colors.cyanSignal,
-    colors.orchidBloom,
-    colors.periwinkle,
-    colors.paleIris,
-    colors.deepIris,
-    colors.success,
-    colors.warning,
-    colors.error,
-    colors.silver,
-  ];
 }
 
 function getInitialForm(accounts: Account[], colors: MeowneyColors): SavingFormValues {
@@ -157,7 +135,7 @@ export function SavingsScreen() {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
+  const colorOptions = useMemo(() => getGoalColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
     return selectedNotebookName ?? (activeNotebookId ? notebookRepository.getActiveById(activeNotebookId)?.name ?? null : null);
   }, [activeNotebookId, selectedNotebookName]);
@@ -294,11 +272,12 @@ export function SavingsScreen() {
       />
       <AppScreen eyebrow="AHORROS" title="Metas y reservas">
           {!activeNotebookId ? (
-            <Surface style={styles.missingNotebook} elevation={0}>
-              <MaterialCommunityIcons name="book-alert-outline" size={36} color={colors.mutedText} />
-              <Text style={styles.emptyTitle}>Selecciona una libreta</Text>
-              <Text style={styles.emptyText}>Entra primero a una libreta para crear ahorros.</Text>
-            </Surface>
+            <AppEmptyState
+              icon="book-alert-outline"
+              title="Selecciona una libreta"
+              message="Entra primero a una libreta para crear ahorros."
+              style={styles.missingNotebook}
+            />
           ) : (
             <Surface style={styles.table} elevation={0}>
               <View style={styles.tableHeader}>
@@ -317,11 +296,12 @@ export function SavingsScreen() {
                   isLoading ? (
                     <AppLoadingState colors={colors} label="Cargando ahorros" />
                   ) : (
-                    <View style={styles.emptyState}>
-                      <MaterialCommunityIcons name="piggy-bank-outline" size={36} color={colors.mutedText} />
-                      <Text style={styles.emptyTitle}>{loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay ahorros'}</Text>
-                      <Text style={styles.emptyText}>{loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Crea una meta para separar objetivos y reservas.'}</Text>
-                    </View>
+                    <AppEmptyState
+                      icon="piggy-bank-outline"
+                      title={loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay ahorros'}
+                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Crea una meta para separar objetivos y reservas.'}
+                      style={styles.emptyState}
+                    />
                   )
                 }
               />
@@ -336,25 +316,27 @@ export function SavingsScreen() {
       </AppScreen>
 
       <Portal>
-        <Dialog visible={Boolean(infoGoal)} onDismiss={() => setInfoGoal(null)} style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Informacion</Dialog.Title>
-          <Dialog.Content>
-            {infoGoal ? (
-              <View style={styles.infoList}>
-                <InfoLine label="Titulo" value={infoGoal.name} />
-                <InfoLine label="Descripcion" value={infoGoal.description || 'Sin descripcion'} />
-                <InfoLine label="Cuenta" value={infoGoal.accountName} />
-                <InfoLine label="Objetivo" value={formatAmount(infoGoal.targetAmount, data.currency)} />
-                <InfoLine label="Fecha objetivo" value={formatDate(infoGoal.targetDate)} />
-                <InfoLine label="Creacion" value={formatDateTime(infoGoal.createdAt)} />
-                <InfoLine label="Actualizacion" value={formatDateTime(infoGoal.updatedAt)} />
-              </View>
-            ) : null}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setInfoGoal(null)}>Cerrar</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <AppContentDialog
+          visible={Boolean(infoGoal)}
+          title="Informacion"
+          titleIcon="eye-outline"
+          titleIconColor={colors.text}
+          contentContainerStyle={styles.infoDialogContent}
+          onAction={() => setInfoGoal(null)}
+          onDismiss={() => setInfoGoal(null)}
+        >
+          {infoGoal ? (
+            <>
+              <AppInfoLine label="Titulo" value={infoGoal.name} />
+              <AppInfoLine label="Descripcion" value={infoGoal.description || 'Sin descripcion'} />
+              <AppInfoLine label="Cuenta" value={infoGoal.accountName} />
+              <AppInfoLine label="Objetivo" value={formatAmount(infoGoal.targetAmount, data.currency)} />
+              <AppInfoLine label="Fecha objetivo" value={formatDate(infoGoal.targetDate)} />
+              <AppInfoLine label="Creacion" value={formatDateTime(infoGoal.createdAt)} />
+              <AppInfoLine label="Actualizacion" value={formatDateTime(infoGoal.updatedAt)} />
+            </>
+          ) : null}
+        </AppContentDialog>
 
         <SavingFormDialog
           accounts={data.accounts}
@@ -373,16 +355,14 @@ export function SavingsScreen() {
           onSave={saveForm}
         />
 
-        <Dialog visible={Boolean(deleteGoal)} onDismiss={() => setDeleteGoal(null)} style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Eliminar ahorro</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.dialogText}>Esta accion archivara el ahorro y dejara de mostrarse.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDeleteGoal(null)}>Cancelar</Button>
-            <Button textColor={colors.error} onPress={confirmDelete}>Confirmar</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <AppConfirmDialog
+          visible={Boolean(deleteGoal)}
+          title="Eliminar ahorro"
+          message="Esta accion archivara el ahorro y dejara de mostrarse."
+          confirmLabel="Confirmar"
+          onCancel={() => setDeleteGoal(null)}
+          onConfirm={confirmDelete}
+        />
       </Portal>
     </View>
   );
@@ -421,7 +401,6 @@ function SavingFormDialog({
   onChange,
   onSave,
 }: SavingFormDialogProps) {
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const selectedAccount = accounts.find((account) => account.id === values.accountId);
 
   return (
@@ -439,23 +418,20 @@ function SavingFormDialog({
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>CUENTA</Text>
-        <Menu
-          visible={accountMenuOpen}
-          onDismiss={() => setAccountMenuOpen(false)}
-          contentStyle={styles.menuContent}
-          anchor={
-            <Button mode="outlined" icon="chevron-down" onPress={() => setAccountMenuOpen(true)} style={styles.select} contentStyle={styles.selectContent} textColor={colors.text}>
-              {selectedAccount?.name ?? 'Seleccionar cuenta'}
-            </Button>
-          }
-        >
-          {accounts.map((account) => (
-            <Menu.Item key={account.id} title={account.name} onPress={() => {
-              onChange({ ...values, accountId: account.id });
-              setAccountMenuOpen(false);
-            }} />
-          ))}
-        </Menu>
+        <AppSelectMenu
+          icon="chevron-down"
+          label="Cuenta"
+          options={accounts.map((account) => ({
+            label: account.name,
+            value: account.id,
+          }))}
+          selectedLabel={selectedAccount?.name ?? 'Seleccionar cuenta'}
+          selectedValue={values.accountId}
+          buttonStyle={styles.select}
+          buttonContentStyle={styles.selectContent}
+          menuContentStyle={styles.menuContent}
+          onSelect={(accountId) => onChange({ ...values, accountId })}
+        />
         {showAccountError ? <HelperText type="error" visible>Selecciona una cuenta.</HelperText> : null}
       </View>
 
@@ -473,12 +449,12 @@ function SavingFormDialog({
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>ICONO</Text>
-        <View style={styles.choiceGrid}>
-          {iconOptions.map((icon) => {
-            const selected = values.icon === icon;
-            return <IconButton key={icon} icon={icon} size={22} mode="contained-tonal" iconColor={selected ? colors.onPrimary : colors.text} containerColor={selected ? colors.primary : colors.selected} style={styles.iconChoice} onPress={() => onChange({ ...values, icon })} accessibilityLabel={`Icono ${icon}`} />;
-          })}
-        </View>
+        <AppIconPickerGrid
+          columns={5}
+          icons={GOAL_ICON_OPTIONS}
+          selectedIcon={values.icon}
+          onSelect={(icon) => onChange({ ...values, icon })}
+        />
       </View>
 
       <View style={styles.pickerGroup}>
@@ -497,28 +473,6 @@ function SavingFormDialog({
     </AppFormDialog>
   );
 }
-
-type InfoLineProps = { label: string; value: string };
-
-function InfoLine({ label, value }: InfoLineProps) {
-  return (
-    <View style={infoStyles.row}>
-      <Text style={infoStyles.label}>{label}</Text>
-      <Text style={infoStyles.value}>{value}</Text>
-    </View>
-  );
-}
-
-const infoStyles = StyleSheet.create({
-  row: { gap: spacing.xs },
-  label: {
-    fontSize: typography.monoLabelSize,
-    fontWeight: typography.mediumWeight,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  value: { fontSize: typography.bodySize, lineHeight: 24 },
-});
 
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
@@ -646,6 +600,19 @@ function createStyles(colors: MeowneyColors) {
     dialogTitle: { color: colors.text, fontWeight: typography.bodyWeight },
     dialogText: { color: colors.mutedText, fontSize: typography.bodySize, lineHeight: 24 },
     infoList: { gap: spacing.md },
+    infoDialogContent: {
+      gap: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
+    },
+    infoLine: { gap: spacing.xs },
+    infoLabel: {
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      textTransform: 'uppercase',
+    },
+    infoValue: { fontSize: typography.bodySize, lineHeight: 24 },
     form: {
       gap: spacing.ms,
       paddingHorizontal: spacing.lg,
@@ -695,5 +662,7 @@ function createStyles(colors: MeowneyColors) {
     colorChoiceSelected: { borderWidth: 2, borderColor: colors.text },
   });
 }
+
+
 
 

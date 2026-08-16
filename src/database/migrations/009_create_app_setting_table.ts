@@ -1,7 +1,7 @@
 import type { Migration } from './index';
 
 export const createAppSettingTable: Migration = {
-  version: 14,
+  version: 9,
   name: 'create_app_setting_table',
   sql: `
     CREATE TABLE IF NOT EXISTS app_setting (

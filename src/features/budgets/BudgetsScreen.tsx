@@ -8,8 +8,6 @@ import {
   View,
 } from 'react-native';
 import {
-  Button,
-  Dialog,
   HelperText,
   IconButton,
   Menu,
@@ -24,8 +22,11 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
-import { AppFormDialog } from '@/components/ui/AppFormDialog';
+import { AppEmptyState } from '@/components/ui/AppEmptyState';
+import { AppInfoLine } from '@/components/ui/AppFormFields';
+import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import { budgetRepository, type BudgetInput } from '@/database/repositories/budget.repository';
 import { categoryRepository } from '@/database/repositories/category.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
@@ -373,11 +374,12 @@ export function BudgetsScreen() {
       />
       <AppScreen eyebrow="PRESUPUESTOS" title="Limites de gasto">
         {!selectedNotebookId ? (
-          <Surface style={styles.missingNotebook} elevation={0}>
-            <MaterialCommunityIcons name="book-alert-outline" size={36} color={colors.mutedText} />
-            <Text style={styles.emptyTitle}>Selecciona una libreta</Text>
-            <Text style={styles.emptyText}>Entra primero a una libreta para crear presupuestos.</Text>
-          </Surface>
+          <AppEmptyState
+            icon="book-alert-outline"
+            title="Selecciona una libreta"
+            message="Entra primero a una libreta para crear presupuestos."
+            style={styles.missingNotebook}
+          />
         ) : (
           <>
             <FlatList
@@ -391,17 +393,16 @@ export function BudgetsScreen() {
                 isLoading ? (
                   <AppLoadingState colors={colors} label="Cargando presupuestos" />
                 ) : (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="chart-donut" size={36} color={colors.mutedText} />
-                    <Text style={styles.emptyTitle}>
-                      {loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay presupuestos'}
-                    </Text>
-                    <Text style={styles.emptyText}>
-                      {loadError
+                  <AppEmptyState
+                    icon="chart-donut"
+                    title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay presupuestos'}
+                    message={
+                      loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea presupuestos por categoria para controlar tus gastos.'}
-                    </Text>
-                  </View>
+                        : 'Crea presupuestos por categoria para controlar tus gastos.'
+                    }
+                    style={styles.emptyState}
+                  />
                 )
               }
               showsVerticalScrollIndicator={false}
@@ -424,25 +425,27 @@ export function BudgetsScreen() {
       </AppScreen>
 
       <Portal>
-        <Dialog visible={Boolean(infoBudget)} onDismiss={() => setInfoBudget(null)} style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Informacion</Dialog.Title>
-          <Dialog.Content>
-            {infoBudget ? (
-              <View style={styles.infoList}>
-                <InfoLine label="Categoria" value={infoBudget.categoryName} />
-                <InfoLine label="Monto" value={formatAmount(infoBudget.amount, data.currency)} />
-                <InfoLine label="Periodo" value={formatPeriod(infoBudget.period)} />
-                <InfoLine label="Inicio" value={formatDate(infoBudget.startDate)} />
-                <InfoLine label="Fin" value={infoBudget.endDate ? formatDate(infoBudget.endDate) : 'Sin fecha fin'} />
-                <InfoLine label="Creacion" value={formatDateTime(infoBudget.createdAt)} />
-                <InfoLine label="Actualizacion" value={formatDateTime(infoBudget.updatedAt)} />
-              </View>
-            ) : null}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setInfoBudget(null)}>Cerrar</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <AppContentDialog
+          visible={Boolean(infoBudget)}
+          title="Informacion"
+          titleIcon="eye-outline"
+          titleIconColor={colors.text}
+          contentContainerStyle={styles.infoDialogContent}
+          onAction={() => setInfoBudget(null)}
+          onDismiss={() => setInfoBudget(null)}
+        >
+          {infoBudget ? (
+            <>
+              <AppInfoLine label="Categoria" value={infoBudget.categoryName} />
+              <AppInfoLine label="Monto" value={formatAmount(infoBudget.amount, data.currency)} />
+              <AppInfoLine label="Periodo" value={formatPeriod(infoBudget.period)} />
+              <AppInfoLine label="Inicio" value={formatDate(infoBudget.startDate)} />
+              <AppInfoLine label="Fin" value={infoBudget.endDate ? formatDate(infoBudget.endDate) : 'Sin fecha fin'} />
+              <AppInfoLine label="Creacion" value={formatDateTime(infoBudget.createdAt)} />
+              <AppInfoLine label="Actualizacion" value={formatDateTime(infoBudget.updatedAt)} />
+            </>
+          ) : null}
+        </AppContentDialog>
 
         <BudgetFormDialog
           categories={data.categories}
@@ -459,33 +462,15 @@ export function BudgetsScreen() {
           onSave={saveForm}
         />
 
-        <Dialog visible={Boolean(deleteBudget)} onDismiss={() => setDeleteBudget(null)} style={styles.dialog}>
-          <Dialog.Title style={styles.dialogTitle}>Eliminar presupuesto</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.dialogText}>Esta accion archivara el presupuesto y dejara de mostrarse.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDeleteBudget(null)}>Cancelar</Button>
-            <Button textColor={colors.error} onPress={confirmDelete}>
-              Confirmar
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
+        <AppConfirmDialog
+          visible={Boolean(deleteBudget)}
+          title="Eliminar presupuesto"
+          message="Esta accion archivara el presupuesto y dejara de mostrarse."
+          confirmLabel="Confirmar"
+          onCancel={() => setDeleteBudget(null)}
+          onConfirm={confirmDelete}
+        />
       </Portal>
-    </View>
-  );
-}
-
-type InfoLineProps = {
-  label: string;
-  value: string;
-};
-
-function InfoLine({ label, value }: InfoLineProps) {
-  return (
-    <View style={infoStyles.row}>
-      <Text style={infoStyles.label}>{label}</Text>
-      <Text style={infoStyles.value}>{value}</Text>
     </View>
   );
 }
@@ -519,8 +504,6 @@ function BudgetFormDialog({
   onChange,
   onSave,
 }: BudgetFormDialogProps) {
-  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
   const selectedCategory = getSelectedCategory(categories, values.categoryId);
   const isCustomPeriod = values.period === 'custom';
 
@@ -534,34 +517,20 @@ function BudgetFormDialog({
     >
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>CATEGORIA</Text>
-              <Menu
-                visible={isCategoryMenuOpen}
-                onDismiss={() => setIsCategoryMenuOpen(false)}
-                contentStyle={styles.menuContent}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    icon="chevron-down"
-                    onPress={() => setIsCategoryMenuOpen(true)}
-                    style={styles.select}
-                    contentStyle={styles.selectContent}
-                    textColor={colors.text}
-                  >
-                    {selectedCategory?.name ?? 'Seleccionar'}
-                  </Button>
-                }
-              >
-                {categories.map((category) => (
-                  <Menu.Item
-                    key={category.id}
-                    title={category.name}
-                    onPress={() => {
-                      onChange({ ...values, categoryId: category.id });
-                      setIsCategoryMenuOpen(false);
-                    }}
-                  />
-                ))}
-              </Menu>
+              <AppSelectMenu
+                icon="chevron-down"
+                label="Categoria"
+                options={categories.map((category) => ({
+                  label: category.name,
+                  value: category.id,
+                }))}
+                selectedLabel={selectedCategory?.name ?? 'Seleccionar'}
+                selectedValue={values.categoryId}
+                buttonStyle={styles.select}
+                buttonContentStyle={styles.selectContent}
+                menuContentStyle={styles.menuContent}
+                onSelect={(categoryId) => onChange({ ...values, categoryId })}
+              />
               {showCategoryError ? (
                 <HelperText type="error" visible>
                   Selecciona una categoria.
@@ -588,43 +557,28 @@ function BudgetFormDialog({
 
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>PERIODO</Text>
-              <Menu
-                visible={isPeriodMenuOpen}
-                onDismiss={() => setIsPeriodMenuOpen(false)}
-                contentStyle={styles.menuContent}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    icon="chevron-down"
-                    onPress={() => setIsPeriodMenuOpen(true)}
-                    style={styles.select}
-                    contentStyle={styles.selectContent}
-                    textColor={colors.text}
-                  >
-                    {formatPeriod(values.period)}
-                  </Button>
-                }
-              >
-                {periodOptions.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    title={option.label}
-                    onPress={() => {
-                      const periodRange =
-                        option.value === 'custom'
-                          ? { startDate: values.startDate || todayKey(), endDate: values.endDate || todayKey() }
-                          : getPeriodRange(option.value);
-                      onChange({
-                        ...values,
-                        period: option.value,
-                        startDate: periodRange.startDate,
-                        endDate: periodRange.endDate,
-                      });
-                      setIsPeriodMenuOpen(false);
-                    }}
-                  />
-                ))}
-              </Menu>
+              <AppSelectMenu
+                icon="chevron-down"
+                label="Periodo"
+                options={periodOptions}
+                selectedLabel={formatPeriod(values.period)}
+                selectedValue={values.period}
+                buttonStyle={styles.select}
+                buttonContentStyle={styles.selectContent}
+                menuContentStyle={styles.menuContent}
+                onSelect={(period) => {
+                  const periodRange =
+                    period === 'custom'
+                      ? { startDate: values.startDate || todayKey(), endDate: values.endDate || todayKey() }
+                      : getPeriodRange(period);
+                  onChange({
+                    ...values,
+                    period,
+                    startDate: periodRange.startDate,
+                    endDate: periodRange.endDate,
+                  });
+                }}
+              />
             </View>
 
             {isCustomPeriod ? (
@@ -659,22 +613,6 @@ function BudgetFormDialog({
     </AppFormDialog>
   );
 }
-
-const infoStyles = StyleSheet.create({
-  row: {
-    gap: spacing.xs,
-  },
-  label: {
-    fontSize: typography.monoLabelSize,
-    fontWeight: typography.mediumWeight,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontSize: typography.bodySize,
-    lineHeight: 24,
-  },
-});
 
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
@@ -847,6 +785,24 @@ function createStyles(colors: MeowneyColors) {
     infoList: {
       gap: spacing.md,
     },
+    infoDialogContent: {
+      gap: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.lg,
+    },
+    infoLine: {
+      gap: spacing.xs,
+    },
+    infoLabel: {
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      textTransform: 'uppercase',
+    },
+    infoValue: {
+      fontSize: typography.bodySize,
+      lineHeight: 24,
+    },
     formScrollArea: {
       borderColor: colors.border,
       paddingHorizontal: 0,
@@ -879,5 +835,6 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
 
 

@@ -9,6 +9,7 @@ export const createAccountTable: Migration = {
       notebook_id TEXT NOT NULL,
       name TEXT NOT NULL,
       description TEXT NULL,
+      "type" TEXT NOT NULL DEFAULT 'OTHER' CHECK ("type" IN ('CASH', 'BANK_ACCOUNT', 'DEBIT_CARD', 'DIGITAL_WALLET', 'SAVINGS', 'INVESTMENT', 'OTHER')),
       icon TEXT NULL,
       color TEXT NULL,
       created_at TEXT NOT NULL,

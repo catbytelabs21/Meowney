@@ -22,9 +22,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppScreenHeader } from '@/components/layout/AppScreen';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
+import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
+import {
+  NOTEBOOK_CURRENCY_OPTIONS,
+  NOTEBOOK_ICON_OPTIONS,
+  getNotebookColorOptions,
+  type NotebookIconName,
+} from '@/constants/notebooks';
 import { categoryRepository } from '@/database/repositories/category.repository';
 import { notebookRepository, type NotebookInput } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
@@ -44,38 +51,6 @@ type NotebookFormValues = {
   currency: string;
   isDefault: boolean;
 };
-
-type NotebookIconName = keyof typeof MaterialCommunityIcons.glyphMap;
-
-const iconOptions: NotebookIconName[] = [
-  'notebook-outline',
-  'wallet-outline',
-  'bank-outline',
-  'chart-line',
-  'cash-multiple',
-  'piggy-bank-outline',
-  'safe-square-outline',
-  'briefcase-outline',
-  'credit-card-outline',
-  'home-outline',
-];
-
-const currencyOptions = ['MXN', 'USD', 'EUR'];
-
-function getColorOptions(colors: MeowneyColors) {
-  return [
-    colors.irisGleam,
-    colors.cyanSignal,
-    colors.orchidBloom,
-    colors.periwinkle,
-    colors.paleIris,
-    colors.deepIris,
-    colors.success,
-    colors.warning,
-    colors.error,
-    colors.silver,
-  ];
-}
 
 function getInitialForm(colors: MeowneyColors): NotebookFormValues {
   return {
@@ -126,7 +101,7 @@ export function NotebooksScreen() {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
+  const colorOptions = useMemo(() => getNotebookColorOptions(colors), [colors]);
 
   const loadNotebooksData = useCallback(
     (): { notebooks: Notebook[] } => ({
@@ -331,17 +306,16 @@ export function NotebooksScreen() {
                   <AppLoadingState colors={colors} label="Cargando libretas" />
                 </Surface>
               ) : (
-                <Surface style={styles.emptyPanel} elevation={0}>
-                  <MaterialCommunityIcons name="notebook-plus-outline" size={36} color={colors.mutedText} />
-                  <Text style={styles.emptyTitle}>
-                    {loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay libretas'}
-                  </Text>
-                  <Text style={styles.emptyText}>
-                    {loadError
-                      ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                      : 'Crea una libreta para separar cuentas, categorias y movimientos por contexto.'}
-                  </Text>
-                </Surface>
+                  <AppEmptyState
+                    icon="notebook-plus-outline"
+                    title={loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay libretas'}
+                    message={
+                      loadError
+                        ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
+                        : 'Crea una libreta para separar cuentas, categorias y movimientos por contexto.'
+                    }
+                    style={styles.emptyPanel}
+                  />
               )
             }
             showsVerticalScrollIndicator={false}
@@ -475,7 +449,7 @@ function NotebookFormDialog({
               <Text style={styles.pickerLabel}>ICONO</Text>
               <AppIconPickerGrid
                 columns={5}
-                icons={iconOptions}
+                icons={NOTEBOOK_ICON_OPTIONS}
                 selectedIcon={values.icon}
                 onSelect={(icon) => onChange({ ...values, icon })}
               />
@@ -510,7 +484,7 @@ function NotebookFormDialog({
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>MONEDA</Text>
               <View style={styles.currencyRow}>
-                {currencyOptions.map((currency) => {
+                {NOTEBOOK_CURRENCY_OPTIONS.map((currency) => {
                   const selected = values.currency === currency;
                   return (
                     <Button

@@ -24,9 +24,17 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
+import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
+import {
+  ACCOUNT_ICON_OPTIONS,
+  ACCOUNT_TYPE_OPTIONS,
+  getAccountColorOptions,
+  type AccountIconName,
+} from '@/constants/accounts';
 import { accountRepository, type AccountInput } from '@/database/repositories/account.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
@@ -38,8 +46,6 @@ import { typography } from '@/theme/typography';
 import { formatAppDateTime } from '@/utils/dateFormat';
 import type { Account, AccountType } from './types';
 
-type AccountIconName = keyof typeof MaterialCommunityIcons.glyphMap;
-
 type AccountFormValues = {
   name: string;
   description: string;
@@ -47,44 +53,6 @@ type AccountFormValues = {
   icon: AccountIconName;
   color: string;
 };
-
-const iconOptions: AccountIconName[] = [
-  'wallet-outline',
-  'bank-outline',
-  'cash',
-  'credit-card-outline',
-  'piggy-bank-outline',
-  'safe-square-outline',
-  'briefcase-outline',
-  'home-outline',
-  'cart-outline',
-  'chart-line',
-];
-
-const accountTypeOptions: { label: string; value: AccountType }[] = [
-  { label: 'Efectivo', value: 'CASH' },
-  { label: 'Banco', value: 'BANK_ACCOUNT' },
-  { label: 'Debito', value: 'DEBIT_CARD' },
-  { label: 'Wallet', value: 'DIGITAL_WALLET' },
-  { label: 'Ahorro', value: 'SAVINGS' },
-  { label: 'Inversion', value: 'INVESTMENT' },
-  { label: 'Otro', value: 'OTHER' },
-];
-
-function getColorOptions(colors: MeowneyColors) {
-  return [
-    colors.irisGleam,
-    colors.cyanSignal,
-    colors.orchidBloom,
-    colors.periwinkle,
-    colors.paleIris,
-    colors.deepIris,
-    colors.success,
-    colors.warning,
-    colors.error,
-    colors.silver,
-  ];
-}
 
 function getInitialForm(colors: MeowneyColors): AccountFormValues {
   return {
@@ -124,7 +92,7 @@ function formatDate(value: string) {
 }
 
 function formatAccountType(type: AccountType) {
-  return accountTypeOptions.find((option) => option.value === type)?.label ?? 'Otro';
+  return ACCOUNT_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Otro';
 }
 
 export function AccountsScreen() {
@@ -137,7 +105,7 @@ export function AccountsScreen() {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
+  const colorOptions = useMemo(() => getAccountColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
     if (selectedNotebookName) {
       return selectedNotebookName;
@@ -308,16 +276,17 @@ export function AccountsScreen() {
       />
       <AppScreen eyebrow="CUENTAS" title="Activos y tarjetas">
         {!activeNotebookId ? (
-          <Surface style={styles.missingNotebook} elevation={0}>
-            <MaterialCommunityIcons name="book-alert-outline" size={36} color={colors.mutedText} />
-            <Text style={styles.emptyTitle}>Selecciona una libreta</Text>
-            <Text style={styles.emptyText}>
-              Entra primero a una libreta para que las cuentas se guarden en el lugar correcto.
-            </Text>
+          <AppEmptyState
+            icon="book-alert-outline"
+            title="Selecciona una libreta"
+            message="Entra primero a una libreta para que las cuentas se guarden en el lugar correcto."
+            style={styles.missingNotebook}
+            action={
             <Button mode="contained" onPress={() => router.replace('/notebooks')}>
               Ir a libretas
             </Button>
-          </Surface>
+            }
+          />
         ) : (
           <>
             <FlatList
@@ -331,17 +300,16 @@ export function AccountsScreen() {
                 isLoading ? (
                   <AppLoadingState colors={colors} label="Cargando cuentas" />
                 ) : (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="wallet-plus-outline" size={36} color={colors.mutedText} />
-                    <Text style={styles.emptyTitle}>
-                      {loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay cuentas'}
-                    </Text>
-                    <Text style={styles.emptyText}>
-                      {loadError
+                  <AppEmptyState
+                    icon="wallet-plus-outline"
+                    title={loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay cuentas'}
+                    message={
+                      loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea una cuenta para organizar saldos, tarjetas o efectivo dentro de esta libreta.'}
-                    </Text>
-                  </View>
+                        : 'Crea una cuenta para organizar saldos, tarjetas o efectivo dentro de esta libreta.'
+                    }
+                    style={styles.emptyState}
+                  />
                 )
               }
               showsVerticalScrollIndicator={false}
@@ -434,7 +402,6 @@ function AccountFormDialog({
   onSave,
 }: AccountFormDialogProps) {
   const formScrollRef = useRef<ScrollView>(null);
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const selectedTypeLabel = formatAccountType(values.type);
 
   return (
@@ -476,41 +443,24 @@ function AccountFormDialog({
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>TIPO</Text>
-        <Menu
-          visible={isTypeMenuOpen}
-          onDismiss={() => setIsTypeMenuOpen(false)}
-          contentStyle={styles.typeMenuContent}
-          anchor={
-            <Button
-              mode="outlined"
-              icon="chevron-down"
-              onPress={() => setIsTypeMenuOpen(true)}
-              style={styles.typeSelect}
-              contentStyle={styles.typeSelectContent}
-              textColor={colors.text}
-            >
-              {selectedTypeLabel}
-            </Button>
-          }
-        >
-          {accountTypeOptions.map((option) => (
-            <Menu.Item
-              key={option.value}
-              title={option.label}
-              onPress={() => {
-                onChange({ ...values, type: option.value });
-                setIsTypeMenuOpen(false);
-              }}
-            />
-          ))}
-        </Menu>
+        <AppSelectMenu
+          icon="chevron-down"
+          label="Tipo"
+          options={ACCOUNT_TYPE_OPTIONS}
+          selectedLabel={selectedTypeLabel}
+          selectedValue={values.type}
+          buttonStyle={styles.typeSelect}
+          buttonContentStyle={styles.typeSelectContent}
+          menuContentStyle={styles.typeMenuContent}
+          onSelect={(type) => onChange({ ...values, type })}
+        />
       </View>
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>ICONO</Text>
         <AppIconPickerGrid
           columns={5}
-          icons={iconOptions}
+          icons={ACCOUNT_ICON_OPTIONS}
           selectedIcon={values.icon}
           onSelect={(icon) => onChange({ ...values, icon })}
         />
@@ -757,5 +707,6 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
 
 

@@ -16,7 +16,6 @@ import {
   Surface,
   Text,
   TextInput,
-  Tooltip,
 } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -25,9 +24,21 @@ import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
+import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
+import {
+  CATEGORY_ICON_OPTIONS,
+  CATEGORY_SORT_OPTIONS,
+  CATEGORY_TYPE_FILTER_OPTIONS,
+  CATEGORY_TYPE_OPTIONS,
+  getCategoryColorOptions,
+  type CategoryIconName,
+  type CategorySort,
+  type CategoryTypeFilter,
+} from '@/constants/categories';
 import { categoryRepository, type CategoryInput } from '@/database/repositories/category.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
@@ -39,63 +50,12 @@ import { typography } from '@/theme/typography';
 import { formatAppDateTime } from '@/utils/dateFormat';
 import type { Category, CategoryType } from './types';
 
-type CategoryIconName = keyof typeof MaterialCommunityIcons.glyphMap;
-
 type CategoryFormValues = {
   color: string;
   icon: CategoryIconName;
   name: string;
   type: CategoryType;
 };
-
-type CategoryTypeFilter = 'all' | CategoryType;
-
-type CategorySort = 'nameAsc' | 'nameDesc' | 'updatedDesc';
-
-const iconOptions: CategoryIconName[] = [
-  'briefcase-outline',
-  'cash-plus',
-  'gift-outline',
-  'cart-outline',
-  'silverware-fork-knife',
-  'bus',
-  'home-outline',
-  'heart-pulse',
-  'movie-open-outline',
-  'dots-horizontal-circle-outline',
-];
-
-const categoryTypeOptions: { label: string; value: CategoryType }[] = [
-  { label: 'Ingreso', value: 'income' },
-  { label: 'Gasto', value: 'expense' },
-];
-
-const categoryTypeFilterOptions: { label: string; value: CategoryTypeFilter }[] = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Ingresos', value: 'income' },
-  { label: 'Gastos', value: 'expense' },
-];
-
-const categorySortOptions: { label: string; value: CategorySort }[] = [
-  { label: 'Nombre A-Z', value: 'nameAsc' },
-  { label: 'Nombre Z-A', value: 'nameDesc' },
-  { label: 'Recientes', value: 'updatedDesc' },
-];
-
-function getColorOptions(colors: MeowneyColors) {
-  return [
-    colors.irisGleam,
-    colors.cyanSignal,
-    colors.orchidBloom,
-    colors.periwinkle,
-    colors.paleIris,
-    colors.deepIris,
-    colors.success,
-    colors.warning,
-    colors.error,
-    colors.silver,
-  ];
-}
 
 function getInitialForm(colors: MeowneyColors): CategoryFormValues {
   return {
@@ -133,7 +93,7 @@ function formatDate(value: string) {
 }
 
 function formatCategoryType(type: CategoryType) {
-  return categoryTypeOptions.find((option) => option.value === type)?.label ?? 'Gasto';
+  return CATEGORY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Gasto';
 }
 
 export function CategoriesScreen() {
@@ -146,7 +106,7 @@ export function CategoriesScreen() {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
+  const colorOptions = useMemo(() => getCategoryColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
     if (selectedNotebookName) {
       return selectedNotebookName;
@@ -198,8 +158,8 @@ export function CategoriesScreen() {
     });
   }, [categories, sortOrder, typeFilter]);
   const selectedTypeFilterLabel =
-    categoryTypeFilterOptions.find((option) => option.value === typeFilter)?.label ?? 'Todos';
-  const selectedSortLabel = categorySortOptions.find((option) => option.value === sortOrder)?.label ?? 'Nombre A-Z';
+    CATEGORY_TYPE_FILTER_OPTIONS.find((option) => option.value === typeFilter)?.label ?? 'Todos';
+  const selectedSortLabel = CATEGORY_SORT_OPTIONS.find((option) => option.value === sortOrder)?.label ?? 'Nombre A-Z';
   const toggleFilters = () => {
     setShowFilters((current) => !current);
   };
@@ -342,16 +302,17 @@ export function CategoriesScreen() {
       />
       <AppScreen eyebrow="CATEGORIAS" title="Ingresos y gastos">
         {!activeNotebookId ? (
-          <Surface style={styles.missingNotebook} elevation={0}>
-            <MaterialCommunityIcons name="book-alert-outline" size={36} color={colors.mutedText} />
-            <Text style={styles.emptyTitle}>Selecciona una libreta</Text>
-            <Text style={styles.emptyText}>
-              Entra primero a una libreta para que las categorias se guarden en el lugar correcto.
-            </Text>
+          <AppEmptyState
+            icon="book-alert-outline"
+            title="Selecciona una libreta"
+            message="Entra primero a una libreta para que las categorias se guarden en el lugar correcto."
+            style={styles.missingNotebook}
+            action={
             <Button mode="contained" onPress={() => router.replace('/notebooks')}>
               Ir a libretas
             </Button>
-          </Surface>
+            }
+          />
         ) : (
           <>
             <View style={styles.filterSection}>
@@ -370,26 +331,28 @@ export function CategoriesScreen() {
 
               <AppAnimatedDisclosure visible={showFilters} maxHeight={132} style={styles.filterGrid}>
                 <View style={styles.filterControl}>
-                  <CategoryListMenu
-                    colors={colors}
+                  <AppSelectMenu
+                    anchor="icon"
                     icon="swap-vertical"
                     label="Tipo"
-                    options={categoryTypeFilterOptions}
+                    options={CATEGORY_TYPE_FILTER_OPTIONS}
                     selectedLabel={selectedTypeFilterLabel}
                     selectedValue={typeFilter}
-                    styles={styles}
+                    iconButtonStyle={styles.filterIconButton}
+                    menuContentStyle={styles.typeMenuContent}
                     onSelect={setTypeFilter}
                   />
                 </View>
                 <View style={styles.filterControl}>
-                  <CategoryListMenu
-                    colors={colors}
+                  <AppSelectMenu
+                    anchor="icon"
                     icon="sort"
                     label="Orden"
-                    options={categorySortOptions}
+                    options={CATEGORY_SORT_OPTIONS}
                     selectedLabel={selectedSortLabel}
                     selectedValue={sortOrder}
-                    styles={styles}
+                    iconButtonStyle={styles.filterIconButton}
+                    menuContentStyle={styles.typeMenuContent}
                     onSelect={setSortOrder}
                   />
                 </View>
@@ -411,17 +374,16 @@ export function CategoriesScreen() {
                 isLoading ? (
                   <AppLoadingState colors={colors} label="Cargando categorias" />
                 ) : (
-                  <View style={styles.emptyState}>
-                    <MaterialCommunityIcons name="tag-plus-outline" size={36} color={colors.mutedText} />
-                    <Text style={styles.emptyTitle}>
-                      {loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay categorias'}
-                    </Text>
-                    <Text style={styles.emptyText}>
-                      {loadError
+                  <AppEmptyState
+                    icon="tag-plus-outline"
+                    title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay categorias'}
+                    message={
+                      loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea categorias para clasificar tus ingresos y gastos.'}
-                    </Text>
-                  </View>
+                        : 'Crea categorias para clasificar tus ingresos y gastos.'
+                    }
+                    style={styles.emptyState}
+                  />
                 )
               }
               showsVerticalScrollIndicator={false}
@@ -500,62 +462,6 @@ type CategoryFormDialogProps = {
   onSave: () => void;
 };
 
-type CategoryListMenuProps<Value extends string> = {
-  colors: MeowneyColors;
-  icon: CategoryIconName;
-  label: string;
-  options: { label: string; value: Value }[];
-  selectedLabel: string;
-  selectedValue: Value;
-  styles: ReturnType<typeof createStyles>;
-  onSelect: (value: Value) => void;
-};
-
-function CategoryListMenu<Value extends string>({
-  colors,
-  icon,
-  label,
-  options,
-  selectedLabel,
-  selectedValue,
-  styles,
-  onSelect,
-}: CategoryListMenuProps<Value>) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <Menu
-      visible={isOpen}
-      onDismiss={() => setIsOpen(false)}
-      contentStyle={styles.typeMenuContent}
-      anchor={
-        <Tooltip title={label}>
-          <IconButton
-            accessibilityLabel={`${label}. ${selectedLabel}`}
-            icon={icon}
-            iconColor={colors.text}
-            size={20}
-            onPress={() => setIsOpen(true)}
-            style={styles.filterIconButton}
-          />
-        </Tooltip>
-      }
-    >
-      {options.map((option) => (
-        <Menu.Item
-          key={option.value}
-          leadingIcon={selectedValue === option.value ? 'check' : undefined}
-          title={option.label}
-          onPress={() => {
-            onSelect(option.value);
-            setIsOpen(false);
-          }}
-        />
-      ))}
-    </Menu>
-  );
-}
-
 function CategoryFormDialog({
   colors,
   colorOptions,
@@ -568,7 +474,6 @@ function CategoryFormDialog({
   onChange,
   onSave,
 }: CategoryFormDialogProps) {
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = useState(false);
   const selectedTypeLabel = formatCategoryType(values.type);
 
   return (
@@ -597,41 +502,24 @@ function CategoryFormDialog({
 
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>TIPO</Text>
-              <Menu
-                visible={isTypeMenuOpen}
-                onDismiss={() => setIsTypeMenuOpen(false)}
-                contentStyle={styles.typeMenuContent}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    icon="chevron-down"
-                    onPress={() => setIsTypeMenuOpen(true)}
-                    style={styles.typeSelect}
-                    contentStyle={styles.typeSelectContent}
-                    textColor={colors.text}
-                  >
-                    {selectedTypeLabel}
-                  </Button>
-                }
-              >
-                {categoryTypeOptions.map((option) => (
-                  <Menu.Item
-                    key={option.value}
-                    title={option.label}
-                    onPress={() => {
-                      onChange({ ...values, type: option.value });
-                      setIsTypeMenuOpen(false);
-                    }}
-                  />
-                ))}
-              </Menu>
+              <AppSelectMenu
+                icon="chevron-down"
+                label="Tipo"
+                options={CATEGORY_TYPE_OPTIONS}
+                selectedLabel={selectedTypeLabel}
+                selectedValue={values.type}
+                buttonStyle={styles.typeSelect}
+                buttonContentStyle={styles.typeSelectContent}
+                menuContentStyle={styles.typeMenuContent}
+                onSelect={(type) => onChange({ ...values, type })}
+              />
             </View>
 
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>ICONO</Text>
               <AppIconPickerGrid
                 columns={5}
-                icons={iconOptions}
+                icons={CATEGORY_ICON_OPTIONS}
                 selectedIcon={values.icon}
                 onSelect={(icon) => onChange({ ...values, icon })}
               />
@@ -943,5 +831,6 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
 
 
