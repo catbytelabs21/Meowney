@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs, router, usePathname } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import { useCallback } from 'react';
-import { Easing, View, type ColorValue, useColorScheme } from 'react-native';
+import { Easing, View, type ColorValue } from 'react-native';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
@@ -23,10 +24,8 @@ function tabIcon(name: TabIconName) {
 }
 
 export default function TabsLayout() {
-  const pathname = usePathname();
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
-  const isNotebooksRoute = pathname === '/notebooks';
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const loadNotebookName = useCallback(
@@ -40,15 +39,13 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <AppHeader
-        title={isNotebooksRoute ? 'Meowney' : activeNotebookName ?? 'Meowney'}
+        title={activeNotebookName ?? 'Meowney'}
         left={
-          isNotebooksRoute ? undefined : (
-            <AppHeaderActionButton
-              accessibilityLabel="Ir a libretas"
-              icon="notebook-outline"
-              onPress={() => router.replace('/notebooks')}
-            />
-          )
+          <AppHeaderActionButton
+            accessibilityLabel="Ir a libretas"
+            icon="notebook-outline"
+            onPress={() => router.replace('/notebooks')}
+          />
         }
       />
       <Tabs
@@ -61,7 +58,6 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: colors.background,
             borderTopColor: colors.border,
-            display: isNotebooksRoute ? 'none' : 'flex',
             position: 'absolute',
           },
           sceneStyle: {
@@ -76,10 +72,6 @@ export default function TabsLayout() {
           },
         }}
       >
-        <Tabs.Screen
-          name="notebooks"
-          options={{ href: null, title: 'Libretas', tabBarIcon: tabIcon('notebook-outline') }}
-        />
         <Tabs.Screen
           name="balance"
           options={{ title: 'Balance', tabBarIcon: tabIcon('scale-balance') }}
@@ -96,3 +88,5 @@ export default function TabsLayout() {
     </View>
   );
 }
+
+

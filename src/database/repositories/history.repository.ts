@@ -1,10 +1,14 @@
 import { database } from '@/database/database';
+import type { AccountBalance } from '@/features/balance/types';
 import type {
-  HistoryAccountBalance,
-  HistoryCategoryFilter,
-  HistoryMovementItem,
-} from '@/features/history/types';
-import type { MovementType, TransactionType } from '@/features/transactions/types';
+  MovementCategoryFilter,
+  MovementItem,
+} from '@/features/movements/types';
+import type {
+  MovementType,
+  TransactionGroupType,
+  TransactionType,
+} from '@/features/transactions/types';
 
 type AccountRow = {
   id: string;
@@ -30,6 +34,9 @@ type MovementRow = {
   amount: number;
   description: string | null;
   occurred_at: string;
+  transaction_group_id: string | null;
+  transaction_group_detached_at: string | null;
+  transaction_group_type: TransactionGroupType | null;
   account_id: string;
   account_name: string;
   to_account_id: string | null;
@@ -38,13 +45,16 @@ type MovementRow = {
   category_name: string | null;
 };
 
-function mapMovement(row: MovementRow): HistoryMovementItem {
+function mapMovement(row: MovementRow): MovementItem {
   return {
     id: row.id,
     type: row.type,
     amount: row.amount,
     description: row.description,
     occurredAt: row.occurred_at,
+    transactionGroupId: row.transaction_group_id,
+    transactionGroupDetachedAt: row.transaction_group_detached_at,
+    transactionGroupType: row.transaction_group_type,
     accountId: row.account_id,
     accountName: row.account_name,
     toAccountId: row.to_account_id,
@@ -55,7 +65,7 @@ function mapMovement(row: MovementRow): HistoryMovementItem {
 }
 
 export const historyRepository = {
-  getBalancesByNotebookAtDate(notebookId: string, dateKey: string): HistoryAccountBalance[] {
+  getBalancesByNotebookAtDate(notebookId: string, dateKey: string): AccountBalance[] {
     const accounts = database.getAllSync<AccountRow>(
       `
         SELECT id, name, icon, color
@@ -134,7 +144,7 @@ export const historyRepository = {
     }));
   },
 
-  listCategoriesByNotebook(notebookId: string): HistoryCategoryFilter[] {
+  listCategoriesByNotebook(notebookId: string): MovementCategoryFilter[] {
     const rows = database.getAllSync<CategoryRow>(
       `
         SELECT id, name, type
@@ -149,7 +159,7 @@ export const historyRepository = {
     return rows;
   },
 
-  listMovementsByNotebook(notebookId: string): HistoryMovementItem[] {
+  listMovementsByNotebook(notebookId: string): MovementItem[] {
     const rows = database.getAllSync<MovementRow>(
       `
         SELECT *
@@ -160,6 +170,9 @@ export const historyRepository = {
             t.amount,
             t.description,
             t.transaction_at AS occurred_at,
+            tgm.group_id AS transaction_group_id,
+            tgm.detached_at AS transaction_group_detached_at,
+            tg.type AS transaction_group_type,
             a.id AS account_id,
             a.name AS account_name,
             NULL AS to_account_id,
@@ -169,6 +182,8 @@ export const historyRepository = {
           FROM "transaction" t
           INNER JOIN account a ON a.id = t.account_id
           LEFT JOIN category c ON c.id = t.category_id AND c.archived_at IS NULL
+          LEFT JOIN transaction_group_member tgm ON tgm.transaction_id = t.id
+          LEFT JOIN transaction_group tg ON tg.id = tgm.group_id AND tg.archived_at IS NULL
           WHERE a.notebook_id = ?
             AND t.archived_at IS NULL
             AND a.archived_at IS NULL
@@ -179,6 +194,9 @@ export const historyRepository = {
             tr.amount,
             tr.description,
             tr.transfer_at AS occurred_at,
+            NULL AS transaction_group_id,
+            NULL AS transaction_group_detached_at,
+            NULL AS transaction_group_type,
             from_account.id AS account_id,
             from_account.name AS account_name,
             to_account.id AS to_account_id,
@@ -204,3 +222,4 @@ export const historyRepository = {
     return rows.map(mapMovement);
   },
 };
+

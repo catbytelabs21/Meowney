@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Dialog, IconButton, Switch, Text, TextInput } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
@@ -73,8 +74,8 @@ function formatMonthLabel(date: Date) {
   return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
 }
 
-export function AppDateInput({ label = 'Fecha', value, onOpen }: AppDateInputProps) {
-  const colorScheme = useColorScheme();
+export function AppDateInput({ label, value, onOpen }: AppDateInputProps) {
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -97,7 +98,7 @@ export function AppDatePickerDialog({
   onDismiss,
   onSelect,
 }: AppDatePickerDialogProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const [view, setView] = useState<DatePickerView>('calendar');
   const [monthDate, setMonthDate] = useState(() => new Date(`${selectedDate}T12:00:00`));
@@ -230,7 +231,8 @@ function MonthHeader({ colors, monthDate, onChangeMonth }: MonthHeaderProps) {
 
 const styles = StyleSheet.create({
   dateInput: {
-    flex: 1,
+    width: '100%',
+    minHeight: 56,
     minWidth: 0,
   },
   dialog: {
@@ -338,3 +340,5 @@ const styles = StyleSheet.create({
     fontWeight: typography.bodyWeight,
   },
 });
+
+

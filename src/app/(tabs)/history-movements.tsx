@@ -1,5 +1,5 @@
-import { HistoryScreen } from '@/features/history/HistoryScreen';
+import { MovementsScreen } from '@/features/movements/MovementsScreen';
 
-export default function HistoryMovementsRoute() {
-  return <HistoryScreen section="movements" />;
+export default function MovementsRoute() {
+  return <MovementsScreen />;
 }

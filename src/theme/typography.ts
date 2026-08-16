@@ -6,6 +6,8 @@ export const typography = {
   bodySmallSize: 14,
   bodySize: 16,
   subheadingSize: 18,
+  screenTitleSize: 16,
+  screenTitleLineHeight: 22,
   headingSize: 38,
   headingLineHeight: 44,
 } as const;

@@ -3,12 +3,12 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useColorScheme,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -29,19 +29,16 @@ type AppScreenProps = AppScreenHeaderProps & {
 
 export function AppScreenHeader({
   eyebrow,
-  subtitle,
-  title,
   style,
   withBottomGap = false,
 }: AppScreenHeaderProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const titleColor = colorScheme === 'light' ? colors.text : colors.pure;
 
   return (
     <View style={[styles.header, withBottomGap ? styles.headerBottomGap : null, style]}>
-      <Text style={[styles.eyebrow, { color: colors.mutedText }]}>{eyebrow}</Text>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-      {subtitle ? <Text style={[styles.subtitle, { color: colors.mutedText }]}>{subtitle}</Text> : null}
+      <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
     </View>
   );
 }
@@ -54,7 +51,7 @@ export function AppScreen({
   subtitle,
   title,
 }: AppScreenProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   const content = (
@@ -98,24 +95,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   header: {
-    gap: spacing.sm,
+    gap: 0,
   },
   headerBottomGap: {
     marginBottom: spacing.lg,
   },
   eyebrow: {
-    fontSize: typography.monoLabelSize,
+    fontSize: typography.screenTitleSize,
     fontWeight: typography.mediumWeight,
-    letterSpacing: 0.2,
-  },
-  title: {
-    fontSize: typography.headingSize,
-    fontWeight: typography.titleWeight,
-    lineHeight: typography.headingLineHeight,
-  },
-  subtitle: {
-    fontSize: typography.bodySize,
-    fontWeight: typography.bodyWeight,
-    lineHeight: 24,
+    letterSpacing: 0,
+    lineHeight: typography.screenTitleLineHeight,
   },
 });
+
+

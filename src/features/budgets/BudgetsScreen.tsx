@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useColorScheme,
 } from 'react-native';
 import {
   Button,
@@ -19,10 +18,12 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { budgetRepository, type BudgetInput } from '@/database/repositories/budget.repository';
@@ -178,7 +179,7 @@ function getSelectedCategory(categories: Category[], categoryId: string) {
 export function BudgetsScreen() {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const stableCurrency = useMemo(
@@ -405,7 +406,7 @@ export function BudgetsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.fabWrap} pointerEvents="box-none">
+            <AppDraggableFab style={styles.fabWrap}>
               <IconButton
                 accessibilityLabel="Nuevo presupuesto"
                 icon="plus"
@@ -417,7 +418,7 @@ export function BudgetsScreen() {
                 style={styles.fab}
                 onPress={openCreate}
               />
-            </View>
+            </AppDraggableFab>
           </>
         )}
       </AppScreen>
@@ -878,3 +879,5 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
+

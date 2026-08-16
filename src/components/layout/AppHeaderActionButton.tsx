@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors } from '@/theme/colors';
 
 type HeaderIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -15,7 +16,7 @@ export function AppHeaderActionButton({
   icon,
   onPress,
 }: AppHeaderActionButtonProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -42,3 +43,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+

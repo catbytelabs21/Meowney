@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useColorScheme,
 } from 'react-native';
 import {
   Button,
@@ -20,7 +19,9 @@ import {
   TextInput,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppScreenHeader } from '@/components/layout/AppScreen';
+import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -119,9 +120,10 @@ function formatDate(value: string) {
 
 export function NotebooksScreen() {
   const clearSelectedNotebookId = useAppStore((state) => state.clearSelectedNotebookId);
-  const opensDefaultNotebookOnLaunch = useAppStore((state) => state.opensDefaultNotebookOnLaunch);
+  const dataResetVersion = useAppStore((state) => state.dataResetVersion);
+  const launchPreference = useAppStore((state) => state.launchPreference);
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
@@ -152,8 +154,13 @@ export function NotebooksScreen() {
   useFocusEffect(
     useCallback(() => {
       clearSelectedNotebookId();
-    }, [clearSelectedNotebookId]),
+      reloadData();
+    }, [clearSelectedNotebookId, reloadData]),
   );
+
+  useEffect(() => {
+    reloadData();
+  }, [dataResetVersion, reloadData]);
 
   useEffect(() => {
     if (isLoading || didHandleInitialLaunch.current) {
@@ -162,7 +169,7 @@ export function NotebooksScreen() {
 
     didHandleInitialLaunch.current = true;
 
-    if (opensDefaultNotebookOnLaunch) {
+    if (launchPreference === 'defaultNotebook') {
       const defaultNotebook = notebooks.find((notebook) => notebook.isDefault);
 
       if (!defaultNotebook) {
@@ -175,7 +182,7 @@ export function NotebooksScreen() {
         params: { notebookId: defaultNotebook.id },
       });
     }
-  }, [isLoading, notebookEntryPath, notebooks, opensDefaultNotebookOnLaunch, setSelectedNotebookId]);
+  }, [isLoading, launchPreference, notebookEntryPath, notebooks, setSelectedNotebookId]);
 
   useEffect(() => {
     router.prefetch('/balance');
@@ -339,7 +346,7 @@ export function NotebooksScreen() {
             }
             showsVerticalScrollIndicator={false}
           />
-          <View style={styles.fabWrap} pointerEvents="box-none">
+          <AppDraggableFab style={styles.fabWrap}>
             <IconButton
               accessibilityLabel="Nueva libreta"
               icon="plus"
@@ -350,7 +357,7 @@ export function NotebooksScreen() {
               style={styles.fab}
               onPress={openCreate}
             />
-          </View>
+          </AppDraggableFab>
         </View>
       </SafeAreaView>
 

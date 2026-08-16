@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useColorScheme,
 } from 'react-native';
 import {
   Button,
@@ -17,12 +16,15 @@ import {
   Surface,
   Text,
   TextInput,
+  Tooltip,
 } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
+import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
@@ -141,7 +143,7 @@ export function CategoriesScreen() {
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
@@ -180,7 +182,7 @@ export function CategoriesScreen() {
   const [showNameError, setShowNameError] = useState(false);
   const [typeFilter, setTypeFilter] = useState<CategoryTypeFilter>('all');
   const [sortOrder, setSortOrder] = useState<CategorySort>('nameAsc');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [actionMenuCategoryId, setActionMenuCategoryId] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
     const filteredCategories =
@@ -359,38 +361,43 @@ export function CategoriesScreen() {
                 onPress={toggleFilters}
                 style={({ pressed }) => [styles.filterToggle, pressed && styles.filterTogglePressed]}
               >
-                <MaterialCommunityIcons name="filter-variant" size={18} color={colors.text} />
-                <Text style={styles.filterToggleText}>{showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}</Text>
+                <Text style={styles.filterToggleText}>Filtros</Text>
                 <View style={styles.filterToggleSpacer} />
-                <MaterialCommunityIcons
-                  name={showFilters ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color={colors.mutedText}
-                />
+                <View style={styles.chevronButton}>
+                  <MaterialCommunityIcons name={showFilters ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedText} />
+                </View>
               </Pressable>
 
               <AppAnimatedDisclosure visible={showFilters} maxHeight={132} style={styles.filterGrid}>
                 <View style={styles.filterControl}>
-                  <Text style={styles.filterLabel}>TIPO</Text>
                   <CategoryListMenu
                     colors={colors}
+                    icon="swap-vertical"
+                    label="Tipo"
                     options={categoryTypeFilterOptions}
                     selectedLabel={selectedTypeFilterLabel}
+                    selectedValue={typeFilter}
                     styles={styles}
                     onSelect={setTypeFilter}
                   />
                 </View>
                 <View style={styles.filterControl}>
-                  <Text style={styles.filterLabel}>ORDEN</Text>
                   <CategoryListMenu
                     colors={colors}
+                    icon="sort"
+                    label="Orden"
                     options={categorySortOptions}
                     selectedLabel={selectedSortLabel}
+                    selectedValue={sortOrder}
                     styles={styles}
                     onSelect={setSortOrder}
                   />
                 </View>
               </AppAnimatedDisclosure>
+              <View style={styles.filterContextSpacer} />
+              <Text numberOfLines={1} style={styles.filterContextText}>
+                Vista: {selectedTypeFilterLabel} · {selectedSortLabel}
+              </Text>
             </View>
 
             <FlatList
@@ -419,7 +426,7 @@ export function CategoriesScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.fabWrap} pointerEvents="box-none">
+            <AppDraggableFab style={styles.fabWrap}>
               <IconButton
                 accessibilityLabel="Nueva categoria"
                 icon="plus"
@@ -430,7 +437,7 @@ export function CategoriesScreen() {
                 style={styles.fab}
                 onPress={openCreate}
               />
-            </View>
+            </AppDraggableFab>
           </>
         )}
       </AppScreen>
@@ -495,16 +502,22 @@ type CategoryFormDialogProps = {
 
 type CategoryListMenuProps<Value extends string> = {
   colors: MeowneyColors;
+  icon: CategoryIconName;
+  label: string;
   options: { label: string; value: Value }[];
   selectedLabel: string;
+  selectedValue: Value;
   styles: ReturnType<typeof createStyles>;
   onSelect: (value: Value) => void;
 };
 
 function CategoryListMenu<Value extends string>({
   colors,
+  icon,
+  label,
   options,
   selectedLabel,
+  selectedValue,
   styles,
   onSelect,
 }: CategoryListMenuProps<Value>) {
@@ -516,21 +529,22 @@ function CategoryListMenu<Value extends string>({
       onDismiss={() => setIsOpen(false)}
       contentStyle={styles.typeMenuContent}
       anchor={
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setIsOpen(true)}
-          style={({ pressed }) => [styles.filterButton, pressed && styles.filterButtonPressed]}
-        >
-          <Text numberOfLines={1} style={styles.filterButtonText}>
-            {selectedLabel}
-          </Text>
-          <MaterialCommunityIcons name="chevron-down" size={20} color={colors.text} />
-        </Pressable>
+        <Tooltip title={label}>
+          <IconButton
+            accessibilityLabel={`${label}. ${selectedLabel}`}
+            icon={icon}
+            iconColor={colors.text}
+            size={20}
+            onPress={() => setIsOpen(true)}
+            style={styles.filterIconButton}
+          />
+        </Tooltip>
       }
     >
       {options.map((option) => (
         <Menu.Item
           key={option.value}
+          leadingIcon={selectedValue === option.value ? 'check' : undefined}
           title={option.label}
           onPress={() => {
             onSelect(option.value);
@@ -691,56 +705,62 @@ function createStyles(colors: MeowneyColors) {
       minHeight: 36,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.sm,
+      gap: spacing.md,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: spacing.xs,
       borderRadius: radii.button,
-      marginLeft: -spacing.sm,
-      marginRight: -spacing.sm,
     },
     filterTogglePressed: {
       backgroundColor: colors.selected,
     },
     filterToggleText: {
-      color: colors.text,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.bodyWeight,
-    },
-    filterToggleSpacer: {
-      flex: 1,
-    },
-    filterGrid: {
-      width: '100%',
-      gap: spacing.xs,
-    },
-    filterControl: {
-      gap: 2,
-    },
-    filterLabel: {
       color: colors.mutedText,
       fontSize: typography.monoLabelSize,
       fontWeight: typography.mediumWeight,
       letterSpacing: 0.2,
     },
-    filterButton: {
-      minHeight: 44,
-      flexDirection: 'row',
+    filterToggleSpacer: {
+      flex: 1,
+    },
+    chevronButton: {
+      width: 30,
+      height: 30,
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.xs,
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
       borderRadius: radii.button,
+      backgroundColor: colors.selected,
+    },
+    filterContextSpacer: {
+      height: spacing.sm,
+    },
+    filterContextText: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      lineHeight: 16,
+      paddingHorizontal: spacing.xs,
+    },
+    filterGrid: {
+      width: '100%',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    filterControl: {
+      flexShrink: 0,
+    },
+    filterIconButton: {
+      width: 42,
+      height: 42,
+      margin: 0,
       borderWidth: 1,
       borderColor: colors.pressed,
+      borderRadius: radii.button,
       backgroundColor: colors.selected,
-      paddingHorizontal: spacing.ms,
-    },
-    filterButtonPressed: {
-      backgroundColor: colors.pressed,
-    },
-    filterButtonText: {
-      flex: 1,
-      color: colors.text,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.bodyWeight,
     },
     list: {
       flex: 1,
@@ -923,3 +943,5 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
+

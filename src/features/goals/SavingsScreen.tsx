@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View, useColorScheme } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Button, Dialog, Divider, HelperText, IconButton, Menu, Portal, Surface, Text, TextInput } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
@@ -153,7 +154,7 @@ export function SavingsScreen() {
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
@@ -694,3 +695,5 @@ function createStyles(colors: MeowneyColors) {
     colorChoiceSelected: { borderWidth: 2, borderColor: colors.text },
   });
 }
+
+

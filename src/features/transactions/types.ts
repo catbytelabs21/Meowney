@@ -1,5 +1,6 @@
 export type TransactionType = 'income' | 'expense';
 export type MovementType = TransactionType | 'transfer';
+export type TransactionGroupType = 'recurring';
 
 export type Transaction = {
   id: string;
@@ -9,6 +10,9 @@ export type Transaction = {
   amount: number;
   description: string | null;
   transactionAt: string;
+  transactionGroupId: string | null;
+  transactionGroupDetachedAt: string | null;
+  transactionGroupType: TransactionGroupType | null;
   createdAt: string;
   updatedAt: string;
   archivedAt: string | null;
@@ -34,6 +38,9 @@ export type MovementListItem = {
   occurredAt: string;
   accountName: string;
   toAccountName: string | null;
+  transactionGroupId: string | null;
+  transactionGroupDetachedAt: string | null;
+  transactionGroupType: TransactionGroupType | null;
   createdAt: string;
   updatedAt: string;
 };

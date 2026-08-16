@@ -113,7 +113,7 @@ export const categoryRepository = {
       notebookId,
       name,
       type,
-      icon: type === 'income' ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline',
+      icon: type === 'income' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline',
       color: null,
       parentId: null,
       createdAt,

@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { RefObject } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text as NativeText, View, useColorScheme, type DimensionValue } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text as NativeText, View, type DimensionValue } from 'react-native';
 import { IconButton, TextInput } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
@@ -42,6 +43,7 @@ type AppOptionToggleProps = {
 type AppReadOnlyRowProps = {
   icon: AppIconName;
   iconBackgroundColor?: string;
+  iconColor?: string;
   subtitle?: string;
   title: string;
   trailingText?: string;
@@ -49,7 +51,7 @@ type AppReadOnlyRowProps = {
 };
 
 export function AppInfoLine({ label, value }: AppInfoLineProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -60,8 +62,8 @@ export function AppInfoLine({ label, value }: AppInfoLineProps) {
   );
 }
 
-export function AppDescriptionInput({ placeholder, scrollRef, value, onChangeText }: AppDescriptionInputProps) {
-  const colorScheme = useColorScheme();
+export function AppDescriptionInput({ placeholder, value, onChangeText }: AppDescriptionInputProps) {
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -74,9 +76,6 @@ export function AppDescriptionInput({ placeholder, scrollRef, value, onChangeTex
       scrollEnabled={false}
       style={[styles.descriptionInput, { backgroundColor: colors.background }]}
       contentStyle={styles.descriptionInputContent}
-      onFocus={() => {
-        requestAnimationFrame(() => scrollRef?.current?.scrollToEnd({ animated: true }));
-      }}
       onChangeText={onChangeText}
     />
   );
@@ -88,7 +87,7 @@ export function AppIconPickerGrid<IconName extends AppIconName>({
   selectedIcon,
   onSelect,
 }: AppIconPickerGridProps<IconName>) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const cellWidth = `${Math.max(1, Math.floor(100 / columns) - 3)}%` as DimensionValue;
 
@@ -126,7 +125,7 @@ export function AppOptionToggle({
   uncheckedLabel,
   onToggle,
 }: AppOptionToggleProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -163,19 +162,20 @@ export function AppOptionToggle({
 export function AppReadOnlyRow({
   icon,
   iconBackgroundColor,
+  iconColor,
   subtitle,
   title,
   trailingText,
   trailingTextColor,
 }: AppReadOnlyRowProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
     <View style={[styles.readOnlyRow, { borderColor: colors.pressed, backgroundColor: colors.background }]}>
       <View style={styles.readOnlyRowContent}>
         <View style={[styles.readOnlyIcon, { backgroundColor: iconBackgroundColor ?? colors.selected }]}>
-          <MaterialCommunityIcons name={icon} size={20} color={colors.void} />
+          <MaterialCommunityIcons name={icon} size={20} color={iconColor ?? colors.void} />
         </View>
         <View style={styles.readOnlyCopy}>
           <NativeText numberOfLines={1} style={[styles.readOnlyTitle, { color: colors.text }]}>
@@ -297,3 +297,5 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 });
+
+

@@ -55,6 +55,9 @@ function mapTransferMovement(row: TransferMovementRow): MovementListItem {
     occurredAt: row.occurred_at,
     accountName: row.account_name,
     toAccountName: row.to_account_name,
+    transactionGroupId: null,
+    transactionGroupDetachedAt: null,
+    transactionGroupType: null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

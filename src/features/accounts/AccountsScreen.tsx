@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useColorScheme,
 } from 'react-native';
 import {
   Button,
@@ -19,10 +18,12 @@ import {
   Text,
   TextInput,
 } from 'react-native-paper';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
@@ -133,7 +134,7 @@ export function AccountsScreen() {
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getColorOptions(colors), [colors]);
@@ -345,7 +346,7 @@ export function AccountsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.fabWrap} pointerEvents="box-none">
+            <AppDraggableFab style={styles.fabWrap}>
               <IconButton
                 accessibilityLabel="Nueva cuenta"
                 icon="plus"
@@ -356,7 +357,7 @@ export function AccountsScreen() {
                 style={styles.fab}
                 onPress={openCreate}
               />
-            </View>
+            </AppDraggableFab>
           </>
         )}
       </AppScreen>
@@ -756,3 +757,5 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
+
+

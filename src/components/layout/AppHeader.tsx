@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, useColorScheme } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppSettingsButton } from './AppSettingsButton';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -14,7 +15,7 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ left, right = <AppSettingsButton />, title }: AppHeaderProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -60,3 +61,5 @@ const styles = StyleSheet.create({
     fontWeight: typography.titleWeight,
   },
 });
+
+

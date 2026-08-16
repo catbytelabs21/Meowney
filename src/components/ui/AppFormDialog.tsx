@@ -1,20 +1,21 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Animated,
   Easing,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text as NativeText,
   View,
-  useColorScheme,
   useWindowDimensions,
 } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Button, Dialog, Modal, Surface } from 'react-native-paper';
+import { Button, Dialog, Surface } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
 import { radii } from '@/theme/radii';
@@ -36,6 +37,11 @@ type AppFormDialogProps = {
   onSave: () => void;
 };
 
+type AppFormDialogSnapshot = Pick<
+  AppFormDialogProps,
+  'children' | 'contentContainerStyle' | 'saveLabel' | 'title' | 'titleIcon' | 'titleIconColor'
+>;
+
 type AppContentDialogProps = {
   actionLabel?: string;
   actionTextColor?: string;
@@ -48,6 +54,11 @@ type AppContentDialogProps = {
   onAction: () => void;
   onDismiss: () => void;
 };
+
+type AppContentDialogSnapshot = Pick<
+  AppContentDialogProps,
+  'actionLabel' | 'actionTextColor' | 'children' | 'contentContainerStyle' | 'title' | 'titleIcon' | 'titleIconColor'
+>;
 
 type AppConfirmDialogProps = {
   cancelLabel?: string;
@@ -74,11 +85,27 @@ export function AppFormDialog({
 }: AppFormDialogProps) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const dialogVerticalMargin = Math.max(spacing.lg, Math.max(insets.top, insets.bottom) + spacing.md);
   const dialogHeight = height - dialogVerticalMargin * 2;
   const [isMounted, setIsMounted] = useState(visible);
+  const liveSnapshot = useMemo<AppFormDialogSnapshot>(
+    () => ({
+      children,
+      contentContainerStyle,
+      saveLabel,
+      title,
+      titleIcon,
+      titleIconColor,
+    }),
+    [children, contentContainerStyle, saveLabel, title, titleIcon, titleIconColor],
+  );
+  const snapshotRef = useRef(liveSnapshot);
+  if (visible) {
+    snapshotRef.current = liveSnapshot;
+  }
+  const renderedSnapshot = visible ? liveSnapshot : snapshotRef.current;
   const progress = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
   useEffect(() => {
@@ -131,12 +158,15 @@ export function AppFormDialog({
   }
 
   return (
-    <Modal
-      visible={isMounted}
-      onDismiss={onCancel}
-      style={styles.modal}
-      contentContainerStyle={styles.modalContent}
-    >
+    <View style={styles.modal}>
+      <Animated.View style={[styles.modalBackdrop, { opacity: progress }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar formulario"
+          style={styles.modalBackdropPressable}
+          onPress={onCancel}
+        />
+      </Animated.View>
       <Animated.View style={animatedDialogStyle}>
         <Surface
           elevation={0}
@@ -151,9 +181,15 @@ export function AppFormDialog({
             style={styles.shell}
           >
             <View style={styles.titleBar}>
-              {titleIcon ? <MaterialCommunityIcons name={titleIcon} size={18} color={titleIconColor ?? colors.mutedText} /> : null}
+              {renderedSnapshot.titleIcon ? (
+                <MaterialCommunityIcons
+                  name={renderedSnapshot.titleIcon}
+                  size={18}
+                  color={renderedSnapshot.titleIconColor ?? colors.mutedText}
+                />
+              ) : null}
               <NativeText numberOfLines={1} style={[styles.title, { color: colors.text }]}>
-                {title}
+                {renderedSnapshot.title}
               </NativeText>
             </View>
             <View style={[styles.separator, { backgroundColor: colors.border }]} />
@@ -164,9 +200,9 @@ export function AppFormDialog({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               style={styles.scroll}
-              contentContainerStyle={contentContainerStyle}
+              contentContainerStyle={renderedSnapshot.contentContainerStyle}
             >
-              {children}
+              {renderedSnapshot.children}
             </ScrollView>
             <View style={[styles.separator, { backgroundColor: colors.border }]} />
             <View style={styles.actions}>
@@ -174,13 +210,13 @@ export function AppFormDialog({
                 Cancelar
               </Button>
               <Button textColor={colors.success} onPress={onSave}>
-                {saveLabel}
+                {renderedSnapshot.saveLabel}
               </Button>
             </View>
           </KeyboardAvoidingView>
         </Surface>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 
@@ -198,11 +234,28 @@ export function AppContentDialog({
 }: AppContentDialogProps) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const dialogVerticalMargin = Math.max(spacing.lg, Math.max(insets.top, insets.bottom) + spacing.md);
   const dialogMaxHeight = height - dialogVerticalMargin * 2;
   const [isMounted, setIsMounted] = useState(visible);
+  const liveSnapshot = useMemo<AppContentDialogSnapshot>(
+    () => ({
+      actionLabel,
+      actionTextColor,
+      children,
+      contentContainerStyle,
+      title,
+      titleIcon,
+      titleIconColor,
+    }),
+    [actionLabel, actionTextColor, children, contentContainerStyle, title, titleIcon, titleIconColor],
+  );
+  const snapshotRef = useRef(liveSnapshot);
+  if (visible) {
+    snapshotRef.current = liveSnapshot;
+  }
+  const renderedSnapshot = visible ? liveSnapshot : snapshotRef.current;
   const progress = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
   useEffect(() => {
@@ -255,7 +308,15 @@ export function AppContentDialog({
   }
 
   return (
-    <Modal visible={isMounted} onDismiss={onDismiss} style={styles.modal} contentContainerStyle={styles.modalContent}>
+    <View style={styles.modal}>
+      <Animated.View style={[styles.modalBackdrop, { opacity: progress }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar detalle"
+          style={styles.modalBackdropPressable}
+          onPress={onDismiss}
+        />
+      </Animated.View>
       <Animated.View style={animatedDialogStyle}>
         <Surface
           elevation={0}
@@ -266,9 +327,15 @@ export function AppContentDialog({
           ]}
         >
           <View style={styles.titleBar}>
-            {titleIcon ? <MaterialCommunityIcons name={titleIcon} size={18} color={titleIconColor ?? colors.mutedText} /> : null}
+            {renderedSnapshot.titleIcon ? (
+              <MaterialCommunityIcons
+                name={renderedSnapshot.titleIcon}
+                size={18}
+                color={renderedSnapshot.titleIconColor ?? colors.mutedText}
+              />
+            ) : null}
             <NativeText numberOfLines={1} style={[styles.title, { color: colors.text }]}>
-              {title}
+              {renderedSnapshot.title}
             </NativeText>
           </View>
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
@@ -276,19 +343,19 @@ export function AppContentDialog({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             style={styles.contentScroll}
-            contentContainerStyle={contentContainerStyle}
+            contentContainerStyle={renderedSnapshot.contentContainerStyle}
           >
-            {children}
+            {renderedSnapshot.children}
           </ScrollView>
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
           <View style={styles.actions}>
-            <Button textColor={actionTextColor ?? colors.mutedText} onPress={onAction}>
-              {actionLabel}
+            <Button textColor={renderedSnapshot.actionTextColor ?? colors.mutedText} onPress={onAction}>
+              {renderedSnapshot.actionLabel}
             </Button>
           </View>
         </Surface>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 
@@ -302,7 +369,7 @@ export function AppConfirmDialog({
   onCancel,
   onConfirm,
 }: AppConfirmDialogProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
 
   return (
@@ -323,11 +390,16 @@ export function AppConfirmDialog({
 
 const styles = StyleSheet.create({
   modal: {
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     margin: 0,
   },
-  modalContent: {
-    margin: 0,
+  modalBackdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+  },
+  modalBackdropPressable: {
+    flex: 1,
   },
   dialog: {
     alignSelf: 'center',
@@ -400,3 +472,5 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
+
+
