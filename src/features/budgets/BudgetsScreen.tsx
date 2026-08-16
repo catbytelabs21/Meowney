@@ -620,29 +620,6 @@ function createStyles(colors: MeowneyColors) {
       flex: 1,
       backgroundColor: colors.background,
     },
-    container: {
-      flex: 1,
-      gap: spacing.lg,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: 80,
-      backgroundColor: colors.background,
-    },
-    header: {
-      gap: spacing.sm,
-    },
-    eyebrow: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    title: {
-      color: colors.text,
-      fontSize: typography.headingSize,
-      fontWeight: typography.titleWeight,
-      lineHeight: typography.headingLineHeight,
-    },
     list: {
       flex: 1,
     },
@@ -743,18 +720,6 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    emptyTitle: {
-      color: colors.text,
-      fontSize: typography.subheadingSize,
-      fontWeight: typography.bodyWeight,
-      textAlign: 'center',
-    },
-    emptyText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-      lineHeight: 22,
-      textAlign: 'center',
-    },
     fabWrap: {
       position: 'absolute',
       right: spacing.lg,
@@ -769,43 +734,10 @@ function createStyles(colors: MeowneyColors) {
       opacity: 0.72,
       borderRadius: 28,
     },
-    dialog: {
-      borderRadius: radii.card,
-      backgroundColor: colors.surface,
-    },
-    dialogTitle: {
-      color: colors.text,
-      fontWeight: typography.bodyWeight,
-    },
-    dialogText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySize,
-      lineHeight: 24,
-    },
-    infoList: {
-      gap: spacing.md,
-    },
     infoDialogContent: {
       gap: spacing.md,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-    },
-    infoLine: {
-      gap: spacing.xs,
-    },
-    infoLabel: {
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-      textTransform: 'uppercase',
-    },
-    infoValue: {
-      fontSize: typography.bodySize,
-      lineHeight: 24,
-    },
-    formScrollArea: {
-      borderColor: colors.border,
-      paddingHorizontal: 0,
     },
     form: {
       gap: spacing.ms,

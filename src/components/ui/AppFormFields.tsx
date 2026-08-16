@@ -29,6 +29,12 @@ type AppIconPickerGridProps<IconName extends AppIconName> = {
   onSelect: (icon: IconName) => void;
 };
 
+type AppColorPickerProps = {
+  colors: string[];
+  selectedColor: string;
+  onSelect: (color: string) => void;
+};
+
 type AppOptionToggleProps = {
   checked: boolean;
   checkedIcon?: AppIconName;
@@ -109,6 +115,35 @@ export function AppIconPickerGrid<IconName extends AppIconName>({
               accessibilityLabel={`Icono ${icon}`}
             />
           </View>
+        );
+      })}
+    </View>
+  );
+}
+
+export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }: AppColorPickerProps) {
+  const colorScheme = useMeowneyColorScheme();
+  const colors = colorScheme === 'light' ? lightColors : darkColors;
+
+  return (
+    <View style={[styles.swatchTray, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
+      {colorOptions.map((color) => {
+        const selected = selectedColor === color;
+
+        return (
+          <Pressable
+            key={color}
+            accessibilityRole="button"
+            accessibilityLabel={`Color ${color}`}
+            onPress={() => onSelect(color)}
+            style={[
+              styles.colorChoice,
+              { backgroundColor: color, borderColor: selected ? colors.text : colors.border },
+              selected && styles.colorChoiceSelected,
+            ]}
+          >
+            {selected ? <MaterialCommunityIcons name="check" size={18} color={colors.void} /> : null}
+          </Pressable>
         );
       })}
     </View>
@@ -234,6 +269,27 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     margin: 0,
+  },
+  swatchTray: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: radii.card,
+    padding: spacing.sm,
+  },
+  colorChoice: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.input,
+    borderWidth: 1,
+  },
+  colorChoiceSelected: {
+    borderWidth: 2,
   },
   optionToggle: {
     minHeight: 48,

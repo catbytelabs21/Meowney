@@ -94,32 +94,6 @@ function MoreSection({ colors, items, label, styles }: MoreSectionProps) {
 
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
-    safeArea: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    container: {
-      gap: spacing.lg,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.xl,
-      backgroundColor: colors.background,
-    },
-    header: {
-      gap: spacing.sm,
-    },
-    eyebrow: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    title: {
-      color: colors.text,
-      fontSize: typography.headingSize,
-      fontWeight: typography.titleWeight,
-      lineHeight: typography.headingLineHeight,
-    },
     section: {
       gap: spacing.sm,
     },

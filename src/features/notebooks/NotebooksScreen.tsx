@@ -23,7 +23,7 @@ import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppScreenHeader } from '@/components/layout/AppScreen';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
-import { AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
+import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import {
@@ -457,28 +457,11 @@ function NotebookFormDialog({
 
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>COLOR</Text>
-              <View style={styles.swatchTray}>
-                {colorOptions.map((color) => {
-                  const selected = values.color === color;
-                  return (
-                    <Pressable
-                      key={color}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Color ${color}`}
-                      onPress={() => onChange({ ...values, color })}
-                      style={[
-                        styles.colorChoice,
-                        { backgroundColor: color },
-                        selected && styles.colorChoiceSelected,
-                      ]}
-                    >
-                      {selected ? (
-                        <MaterialCommunityIcons name="check" size={18} color={colors.void} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <AppColorPicker
+                colors={colorOptions}
+                selectedColor={values.color}
+                onSelect={(color) => onChange({ ...values, color })}
+              />
             </View>
 
             <View style={styles.pickerGroup}>
@@ -529,22 +512,6 @@ function createStyles(colors: MeowneyColors) {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      gap: spacing.sm,
-      marginBottom: spacing.lg,
-    },
-    eyebrow: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    title: {
-      color: colors.text,
-      fontSize: typography.headingSize,
-      fontWeight: typography.titleWeight,
-      lineHeight: typography.headingLineHeight,
     },
     list: {
       flex: 1,
@@ -635,18 +602,6 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    emptyTitle: {
-      color: colors.text,
-      fontSize: typography.subheadingSize,
-      fontWeight: typography.bodyWeight,
-      textAlign: 'center',
-    },
-    emptyText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-      lineHeight: 22,
-      textAlign: 'center',
-    },
     fabWrap: {
       position: 'absolute',
       right: spacing.lg,
@@ -687,31 +642,6 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.monoLabelSize,
       fontWeight: typography.mediumWeight,
       letterSpacing: 0.2,
-    },
-    swatchTray: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.card,
-      backgroundColor: colors.surfaceAlt,
-      padding: spacing.sm,
-    },
-    colorChoice: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radii.input,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    colorChoiceSelected: {
-      borderWidth: 2,
-      borderColor: colors.text,
     },
     currencyRow: {
       flexDirection: 'row',

@@ -29,7 +29,7 @@ export const lightColors = {
   mutedText: '#5E6064',
   border: '#D8D8DE',
   pressed: '#E4E4EA',
-  selected: '#E8E6FF',
+  selected: '#E7E7EC',
   disabled: '#B8B8BE',
   onPrimary: brand.pure,
   success: '#2E7D5B',

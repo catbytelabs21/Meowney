@@ -1,14 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { Button, Divider, HelperText, IconButton, Portal, Surface, Text, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
-import { AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
+import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
@@ -341,7 +341,6 @@ export function SavingsScreen() {
         <SavingFormDialog
           accounts={data.accounts}
           colorOptions={colorOptions}
-          colors={colors}
           showAccountError={showAccountError}
           showAmountError={showAmountError}
           showDateError={showDateError}
@@ -371,7 +370,6 @@ export function SavingsScreen() {
 type SavingFormDialogProps = {
   accounts: Account[];
   colorOptions: string[];
-  colors: MeowneyColors;
   showAccountError: boolean;
   showAmountError: boolean;
   showDateError: boolean;
@@ -388,7 +386,6 @@ type SavingFormDialogProps = {
 function SavingFormDialog({
   accounts,
   colorOptions,
-  colors,
   showAccountError,
   showAmountError,
   showDateError,
@@ -459,16 +456,11 @@ function SavingFormDialog({
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>COLOR</Text>
-        <View style={styles.swatchTray}>
-          {colorOptions.map((color) => {
-            const selected = values.color === color;
-            return (
-              <Pressable key={color} accessibilityRole="button" accessibilityLabel={`Color ${color}`} onPress={() => onChange({ ...values, color })} style={[styles.colorChoice, { backgroundColor: color }, selected && styles.colorChoiceSelected]}>
-                {selected ? <MaterialCommunityIcons name="check" size={18} color={colors.void} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
+        <AppColorPicker
+          colors={colorOptions}
+          selectedColor={values.color}
+          onSelect={(color) => onChange({ ...values, color })}
+        />
       </View>
     </AppFormDialog>
   );
@@ -477,28 +469,6 @@ function SavingFormDialog({
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: colors.background },
-    contentSafeArea: { flex: 1, backgroundColor: colors.background },
-    container: {
-      flex: 1,
-      gap: spacing.lg,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
-      backgroundColor: colors.background,
-    },
-    header: { gap: spacing.sm },
-    eyebrow: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    title: {
-      color: colors.text,
-      fontSize: typography.headingSize,
-      fontWeight: typography.titleWeight,
-      lineHeight: typography.headingLineHeight,
-    },
     table: {
       flex: 1,
       overflow: 'hidden',
@@ -586,33 +556,14 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    emptyTitle: {
-      color: colors.text,
-      fontSize: typography.subheadingSize,
-      fontWeight: typography.bodyWeight,
-      textAlign: 'center',
-    },
-    emptyText: { color: colors.mutedText, fontSize: typography.bodySmallSize, lineHeight: 22, textAlign: 'center' },
     fixedAction: { padding: spacing.md, backgroundColor: colors.surface },
     createButton: { borderRadius: radii.button },
     createButtonContent: { minHeight: 48 },
-    dialog: { borderRadius: radii.card, backgroundColor: colors.surface },
-    dialogTitle: { color: colors.text, fontWeight: typography.bodyWeight },
-    dialogText: { color: colors.mutedText, fontSize: typography.bodySize, lineHeight: 24 },
-    infoList: { gap: spacing.md },
     infoDialogContent: {
       gap: spacing.md,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
     },
-    infoLine: { gap: spacing.xs },
-    infoLabel: {
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-      textTransform: 'uppercase',
-    },
-    infoValue: { fontSize: typography.bodySize, lineHeight: 24 },
     form: {
       gap: spacing.ms,
       paddingHorizontal: spacing.lg,
@@ -630,36 +581,6 @@ function createStyles(colors: MeowneyColors) {
     select: { borderRadius: radii.button },
     selectContent: { minHeight: 48, flexDirection: 'row-reverse' },
     menuContent: { borderRadius: radii.card, backgroundColor: colors.surfaceAlt },
-    choiceGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    iconChoice: { width: 40, height: 40, margin: 0 },
-    swatchTray: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.card,
-      backgroundColor: colors.surfaceAlt,
-      padding: spacing.sm,
-    },
-    colorChoice: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: radii.input,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    colorChoiceSelected: { borderWidth: 2, borderColor: colors.text },
   });
 }
 
