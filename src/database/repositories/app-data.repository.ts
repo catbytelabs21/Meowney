@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { bootstrapStarterData } from '@/database/bootstrap';
 
 const domainTablesInDeleteOrder = [
   'transaction_group_member',
@@ -19,5 +20,7 @@ export const appDataRepository = {
         database.execSync(`DELETE FROM ${tableName}`);
       });
     });
+
+    bootstrapStarterData();
   },
 };

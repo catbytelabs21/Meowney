@@ -6,6 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { StatusBar, View } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppSettingsPanel } from '@/components/layout/AppSettingsPanel';
+import { bootstrapStarterData } from '@/database/bootstrap';
 import { initializeDatabase } from '@/database/database';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { useAppStore } from '@/stores/app.store';
@@ -14,6 +15,7 @@ import { darkTheme, lightTheme } from '@/theme/theme';
 
 SplashScreen.preventAutoHideAsync();
 initializeDatabase();
+bootstrapStarterData();
 useAppStore.getState().hydrateSettings();
 
 export const unstable_settings = {
