@@ -11,6 +11,7 @@ import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import {
   GOAL_ICON_OPTIONS,
@@ -169,6 +170,7 @@ export function SavingsScreen() {
   const [showDateError, setShowDateError] = useState(false);
   const [showNameError, setShowNameError] = useState(false);
   const [showAccountError, setShowAccountError] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (routeNotebookId && routeNotebookId !== selectedNotebookId) {
@@ -214,8 +216,10 @@ export function SavingsScreen() {
 
     if (editingGoal) {
       goalRepository.update(editingGoal.id, input);
+      setSnackbarMessage('Tesoro actualizado y guardado en la guarida.');
     } else {
       goalRepository.create(input);
+      setSnackbarMessage('Nuevo tesoro listo para crecer.');
     }
 
     closeForm();
@@ -229,6 +233,7 @@ export function SavingsScreen() {
 
     goalRepository.archive(deleteGoal.id);
     setDeleteGoal(null);
+    setSnackbarMessage('Tesoro archivado fuera de la guarida.');
     reload();
   };
 
@@ -270,12 +275,12 @@ export function SavingsScreen() {
         title={stableNotebookName ?? 'Meowney'}
         left={<AppHeaderActionButton accessibilityLabel="Regresar a mas" icon="arrow-left" onPress={() => router.back()} />}
       />
-      <AppScreen eyebrow="AHORROS" title="Metas y reservas">
+      <AppScreen eyebrow="AHORROS" title="Tesoros y reservas">
           {!activeNotebookId ? (
             <AppEmptyState
               icon="book-alert-outline"
               title="Selecciona una libreta"
-              message="Entra primero a una libreta para crear ahorros."
+              message="Entra primero a una guarida para guardar tus tesoros."
               style={styles.missingNotebook}
             />
           ) : (
@@ -298,8 +303,8 @@ export function SavingsScreen() {
                   ) : (
                     <AppEmptyState
                       icon="piggy-bank-outline"
-                      title={loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay ahorros'}
-                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Crea una meta para separar objetivos y reservas.'}
+                      title={loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay tesoros'}
+                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Crea una meta para separar objetivos, reservas y pequenos botines.'}
                       style={styles.emptyState}
                     />
                   )
@@ -363,6 +368,11 @@ export function SavingsScreen() {
           onConfirm={confirmDelete}
         />
       </Portal>
+
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }

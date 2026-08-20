@@ -44,7 +44,7 @@ export default function TabsLayout() {
           <AppHeaderActionButton
             accessibilityLabel="Ir a libretas"
             icon="notebook-outline"
-            onPress={() => router.replace('/notebooks')}
+            onPress={() => router.dismissTo('/notebooks')}
           />
         }
       />

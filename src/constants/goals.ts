@@ -5,6 +5,9 @@ export type GoalIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 export const GOAL_ICON_OPTIONS: GoalIconName[] = [
   "piggy-bank-outline",
+  "cat",
+  "fish",
+  "bell-outline",
   "home-outline",
   "airplane",
   "car-outline",
@@ -14,6 +17,8 @@ export const GOAL_ICON_OPTIONS: GoalIconName[] = [
   "laptop",
   "heart-outline",
   "star-outline",
+  "paw-outline",
+  "mouse-variant",
 ];
 
 export function getGoalColorOptions(colors: MeowneyColors) {

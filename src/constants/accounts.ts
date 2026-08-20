@@ -10,11 +10,16 @@ export const ACCOUNT_ICON_OPTIONS: AccountIconName[] = [
   "cash",
   "credit-card-outline",
   "piggy-bank-outline",
+  "paw-outline",
+  "bell-outline",
+  "fish",
+  "mouse-variant",
   "safe-square-outline",
   "briefcase-outline",
   "home-outline",
   "cart-outline",
   "chart-line",
+  "currency-usd",
 ];
 
 export const ACCOUNT_TYPE_OPTIONS: { label: string; value: AccountType }[] = [

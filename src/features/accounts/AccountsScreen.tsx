@@ -23,11 +23,13 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import {
   ACCOUNT_ICON_OPTIONS,
@@ -138,6 +140,7 @@ export function AccountsScreen() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (routeNotebookId && routeNotebookId !== selectedNotebookId) {
@@ -175,8 +178,10 @@ export function AccountsScreen() {
 
     if (editingAccount) {
       accountRepository.update(editingAccount.id, toInput(activeNotebookId, formValues));
+      setSnackbarMessage('Cuenta actualizada; Meowney ya ajusto el saldo vigilado.');
     } else {
       accountRepository.create(toInput(activeNotebookId, formValues));
+      setSnackbarMessage('Cuenta agregada a la guarida.');
     }
 
     closeForm();
@@ -190,6 +195,7 @@ export function AccountsScreen() {
 
     accountRepository.archive(deleteAccount.id, activeNotebookId);
     setDeleteAccount(null);
+    setSnackbarMessage('Cuenta archivada fuera de la guarida.');
     reloadAccounts();
   };
 
@@ -274,12 +280,12 @@ export function AccountsScreen() {
           />
         }
       />
-      <AppScreen eyebrow="CUENTAS" title="Activos y tarjetas">
+      <AppScreen eyebrow="CUENTAS" title="Saldos vigilados">
         {!activeNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
             title="Selecciona una libreta"
-            message="Entra primero a una libreta para que las cuentas se guarden en el lugar correcto."
+            message="Entra primero a una guarida para que Meowney sepa donde cuidar tus cuentas."
             style={styles.missingNotebook}
             action={
             <Button mode="contained" onPress={() => router.replace('/notebooks')}>
@@ -302,11 +308,11 @@ export function AccountsScreen() {
                 ) : (
                   <AppEmptyState
                     icon="wallet-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay cuentas'}
+                    title={loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay saldos que vigilar'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea una cuenta para organizar saldos, tarjetas o efectivo dentro de esta libreta.'
+                        : 'Agrega una cuenta para que Meowney empiece a cuidar saldos, tarjetas o efectivo.'
                     }
                     style={styles.emptyState}
                   />
@@ -315,14 +321,8 @@ export function AccountsScreen() {
               showsVerticalScrollIndicator={false}
             />
             <AppDraggableFab style={styles.fabWrap}>
-              <IconButton
+              <AppCatFab
                 accessibilityLabel="Nueva cuenta"
-                icon="plus"
-                mode="contained"
-                iconColor={colors.onPrimary}
-                containerColor={colors.primary}
-                size={28}
-                style={styles.fab}
                 onPress={openCreate}
               />
             </AppDraggableFab>
@@ -371,6 +371,11 @@ export function AccountsScreen() {
           onConfirm={confirmDelete}
         />
       </Portal>
+
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }
@@ -577,13 +582,6 @@ function createStyles(colors: MeowneyColors) {
       bottom: 88,
       alignItems: 'flex-end',
       gap: spacing.sm,
-    },
-    fab: {
-      width: 56,
-      height: 56,
-      margin: 0,
-      opacity: 0.72,
-      borderRadius: 28,
     },
     menuContent: {
       borderRadius: radii.card,

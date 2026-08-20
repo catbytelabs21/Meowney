@@ -23,11 +23,13 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
+import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import {
   CATEGORY_ICON_OPTIONS,
@@ -144,6 +146,7 @@ export function CategoriesScreen() {
   const [sortOrder, setSortOrder] = useState<CategorySort>('nameAsc');
   const [showFilters, setShowFilters] = useState(true);
   const [actionMenuCategoryId, setActionMenuCategoryId] = useState<string | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
     const filteredCategories =
       typeFilter === 'all' ? categories : categories.filter((category) => category.type === typeFilter);
@@ -201,8 +204,10 @@ export function CategoriesScreen() {
 
     if (editingCategory) {
       categoryRepository.update(editingCategory.id, toInput(activeNotebookId, formValues));
+      setSnackbarMessage('Etiqueta actualizada para rastrear mejor.');
     } else {
       categoryRepository.create(toInput(activeNotebookId, formValues));
+      setSnackbarMessage('Etiqueta nueva lista para los proximos rastros.');
     }
 
     closeForm();
@@ -216,6 +221,7 @@ export function CategoriesScreen() {
 
     categoryRepository.archive(deleteCategory.id, activeNotebookId);
     setDeleteCategory(null);
+    setSnackbarMessage('Etiqueta archivada fuera de la guarida.');
     reloadCategories();
   };
 
@@ -300,12 +306,12 @@ export function CategoriesScreen() {
           />
         }
       />
-      <AppScreen eyebrow="CATEGORIAS" title="Ingresos y gastos">
+      <AppScreen eyebrow="CATEGORIAS" title="Etiquetas de rastreo">
         {!activeNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
             title="Selecciona una libreta"
-            message="Entra primero a una libreta para que las categorias se guarden en el lugar correcto."
+            message="Entra primero a una guarida para guardar las etiquetas donde corresponde."
             style={styles.missingNotebook}
             action={
             <Button mode="contained" onPress={() => router.replace('/notebooks')}>
@@ -376,11 +382,11 @@ export function CategoriesScreen() {
                 ) : (
                   <AppEmptyState
                     icon="tag-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay categorias'}
+                    title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay etiquetas'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea categorias para clasificar tus ingresos y gastos.'
+                        : 'Crea etiquetas para que Meowney rastree ingresos y gastos con mas precision.'
                     }
                     style={styles.emptyState}
                   />
@@ -389,14 +395,8 @@ export function CategoriesScreen() {
               showsVerticalScrollIndicator={false}
             />
             <AppDraggableFab style={styles.fabWrap}>
-              <IconButton
+              <AppCatFab
                 accessibilityLabel="Nueva categoria"
-                icon="plus"
-                mode="contained"
-                iconColor={colors.onPrimary}
-                containerColor={colors.primary}
-                size={28}
-                style={styles.fab}
                 onPress={openCreate}
               />
             </AppDraggableFab>
@@ -444,6 +444,11 @@ export function CategoriesScreen() {
           onConfirm={confirmDelete}
         />
       </Portal>
+
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }
@@ -701,13 +706,6 @@ function createStyles(colors: MeowneyColors) {
       bottom: 88,
       alignItems: 'flex-end',
       gap: spacing.md,
-    },
-    fab: {
-      width: 56,
-      height: 56,
-      margin: 0,
-      opacity: 0.72,
-      borderRadius: 28,
     },
     menuContent: {
       borderRadius: radii.card,

@@ -26,19 +26,19 @@ export function MoreScreen() {
 
   const managementItems: MoreItem[] = [
     {
-      description: 'Activos, efectivo y tarjetas',
+      description: 'Saldos que Meowney vigila',
       icon: 'wallet-outline',
       label: 'Cuentas',
       onPress: () => router.push('/accounts'),
     },
     {
-      description: 'Clasificacion de movimientos',
+      description: 'Etiquetas para seguir rastros',
       icon: 'tag-outline',
       label: 'Categorias',
       onPress: () => router.push('/categories'),
     },
     {
-      description: 'Limites por categoria',
+      description: 'Limites para no gastar con garra',
       icon: 'chart-donut',
       label: 'Presupuestos',
       onPress: () => router.push('/budgets'),
@@ -47,7 +47,7 @@ export function MoreScreen() {
 
   return (
     <AppScreen eyebrow="MAS" title="Herramientas" scroll>
-      <MoreSection items={managementItems} label="GESTION" styles={styles} colors={colors} />
+      <MoreSection items={managementItems} label="RINCON DE CONTROL" styles={styles} colors={colors} />
     </AppScreen>
   );
 }

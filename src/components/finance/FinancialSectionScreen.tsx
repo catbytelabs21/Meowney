@@ -27,7 +27,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { AppAnimatedDisclosure } from "@/components/ui/AppAnimatedDisclosure";
+import { AppCatFab } from "@/components/ui/AppCatFab";
 import { AppDraggableFab } from "@/components/ui/AppDraggableFab";
+import { AppEmptyState } from "@/components/ui/AppEmptyState";
 import {
   AppDateInput,
   AppDatePickerDialog,
@@ -45,6 +47,7 @@ import {
   AppFormDialog,
 } from "@/components/ui/AppFormDialog";
 import { AppLoadingState } from "@/components/ui/AppLoadingState";
+import { AppMeowneySnackbar } from "@/components/ui/AppMeowneySnackbar";
 import { accountRepository } from "@/database/repositories/account.repository";
 import { budgetRepository } from "@/database/repositories/budget.repository";
 import { categoryRepository } from "@/database/repositories/category.repository";
@@ -708,6 +711,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   const [showAccountError, setShowAccountError] = useState(false);
   const [showAmountError, setShowAmountError] = useState(false);
   const [showRecurrenceError, setShowRecurrenceError] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [showBalanceFilters, setShowBalanceFilters] = useState(true);
   const [expandedMovementMonths, setExpandedMovementMonths] = useState<
@@ -966,16 +970,6 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       },
     ],
   };
-  const createButtonIconAnimatedStyle = {
-    transform: [
-      {
-        rotate: createMenuProgress.interpolate({
-          inputRange: [0, 1],
-          outputRange: ["0deg", "45deg"],
-        }),
-      },
-    ],
-  };
   const updateSelectedDate = (dateKey: string) => {
     setSelectedDate(dateKey);
   };
@@ -1116,6 +1110,16 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       return;
     }
 
+    const savedMessage = editingMovement
+      ? "Rastro actualizado en la guarida."
+      : isTransfer
+        ? "Salto entre cuentas registrado."
+        : formValues.isRecurring
+          ? "Rastros recurrentes preparados."
+          : createMode === "income"
+            ? "Ingreso registrado en la guarida."
+            : "Gasto registrado en la guarida.";
+
     if (isTransfer) {
       const input: TransferInput = {
         amount,
@@ -1170,6 +1174,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       }
     }
 
+    setSnackbarMessage(savedMessage);
     closeForm();
     reload();
   };
@@ -1204,6 +1209,11 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
       setPendingRecurringScope(null);
       closeForm();
+      setSnackbarMessage(
+        scope === "single"
+          ? "Rastro separado y actualizado."
+          : "Rastros futuros actualizados.",
+      );
       reload();
       return;
     }
@@ -1216,6 +1226,11 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
     setPendingRecurringScope(null);
     setInfoMovement(null);
+    setSnackbarMessage(
+      scope === "single"
+        ? "Rastro archivado fuera de la serie."
+        : "Rastros futuros archivados.",
+    );
     reload();
   };
 
@@ -1232,6 +1247,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
     setDeleteMovement(null);
     setInfoMovement(null);
+    setSnackbarMessage("Rastro archivado fuera de la guarida.");
     reload();
   };
 
@@ -1789,17 +1805,12 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     return (
       <SafeAreaView edges={["left", "right", "bottom"]} style={styles.safeArea}>
         <View style={styles.container}>
-          <Surface style={styles.emptyPanel} elevation={0}>
-            <MaterialCommunityIcons
-              name="book-alert-outline"
-              size={36}
-              color={colors.mutedText}
-            />
-            <Text style={styles.emptyTitle}>Selecciona una libreta</Text>
-            <Text style={styles.emptyText}>
-              Entra primero a una libreta para revisar tu historial.
-            </Text>
-          </Surface>
+          <AppEmptyState
+            icon="book-alert-outline"
+            title="Selecciona una libreta"
+            message="Entra primero a una guarida para revisar tus saldos y rastros."
+            style={styles.emptyPanel}
+          />
         </View>
       </SafeAreaView>
     );
@@ -1825,17 +1836,12 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
                 <AppLoadingState colors={colors} label="Cargando historial" />
               </Surface>
             ) : (
-              <Surface style={styles.emptyPanel} elevation={0}>
-                <MaterialCommunityIcons
-                  name="history"
-                  size={36}
-                  color={colors.mutedText}
-                />
-                <Text style={styles.emptyTitle}>Sin movimientos</Text>
-                <Text style={styles.emptyText}>
-                  Ajusta los filtros o registra movimientos nuevos.
-                </Text>
-              </Surface>
+              <AppEmptyState
+                icon="paw-outline"
+                title="Sin rastros todavia"
+                message="Ajusta los filtros o registra movimientos nuevos para que Meowney tenga algo que seguir."
+                style={styles.emptyPanel}
+              />
             )
           }
           showsVerticalScrollIndicator={false}
@@ -1869,27 +1875,14 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
                 </Surface>
               </Animated.View>
             ) : null}
-            <Pressable
+            <AppCatFab
               accessibilityLabel={
                 createMenuOpen
                   ? "Cerrar opciones de movimiento"
                   : "Nuevo movimiento"
               }
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.fab,
-                pressed && styles.fabPressed,
-              ]}
               onPress={createMenuOpen ? closeCreateMenu : openCreateMenu}
-            >
-              <Animated.View style={createButtonIconAnimatedStyle}>
-                <MaterialCommunityIcons
-                  name="plus"
-                  size={28}
-                  color={colors.onPrimary}
-                />
-              </Animated.View>
-            </Pressable>
+            />
           </AppDraggableFab>
         ) : null}
       </View>
@@ -2040,6 +2033,10 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
           onConfirm={confirmDelete}
         />
       </Portal>
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -2991,7 +2988,7 @@ function MovementCashflowChart({
     return (
       <View style={styles.distributionChartFrame}>
         <Text style={styles.distributionEmpty}>
-          No hay ingresos o gastos para comparar.
+          Sin rastros de ingresos o gastos para comparar.
         </Text>
       </View>
     );
@@ -3064,7 +3061,7 @@ function MovementCategoryTreemap({
     return (
       <View style={styles.distributionChartFrame}>
         <Text style={styles.distributionEmpty}>
-          No hay categorías para distribuir.
+          Sin etiquetas suficientes para distribuir.
         </Text>
       </View>
     );
@@ -3166,7 +3163,7 @@ function MovementTransferRoutesChart({
     return (
       <View style={styles.distributionChartFrame}>
         <Text style={styles.distributionEmpty}>
-          No hay transferencias para mostrar.
+          Sin saltos entre cuentas para mostrar.
         </Text>
       </View>
     );
@@ -4265,19 +4262,6 @@ function createStyles(colors: MeowneyColors) {
       alignItems: "flex-end",
       gap: spacing.sm,
     },
-    fab: {
-      width: 56,
-      height: 56,
-      alignItems: "center",
-      justifyContent: "center",
-      margin: 0,
-      opacity: 0.72,
-      borderRadius: 28,
-      backgroundColor: colors.primary,
-    },
-    fabPressed: {
-      opacity: 0.88,
-    },
     fabMenu: {
       overflow: "hidden",
       minWidth: 188,
@@ -4499,18 +4483,6 @@ function createStyles(colors: MeowneyColors) {
       borderColor: colors.border,
       borderRadius: radii.card,
       backgroundColor: colors.surface,
-    },
-    emptyTitle: {
-      color: colors.text,
-      fontSize: typography.subheadingSize,
-      fontWeight: typography.titleWeight,
-      textAlign: "center",
-    },
-    emptyText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-      lineHeight: 20,
-      textAlign: "center",
     },
   });
 }

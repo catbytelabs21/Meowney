@@ -5,6 +5,9 @@ export type NotebookIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 export const NOTEBOOK_ICON_OPTIONS: NotebookIconName[] = [
   "notebook-outline",
+  "cat",
+  "fish",
+  "bell-outline",
   "wallet-outline",
   "bank-outline",
   "chart-line",
@@ -14,6 +17,8 @@ export const NOTEBOOK_ICON_OPTIONS: NotebookIconName[] = [
   "briefcase-outline",
   "credit-card-outline",
   "home-outline",
+  "paw-outline",
+  "mouse-variant",
 ];
 
 export const NOTEBOOK_CURRENCY_OPTIONS = ["MXN", "USD", "EUR"];

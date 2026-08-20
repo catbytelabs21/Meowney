@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -21,10 +21,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppScreenHeader } from '@/components/layout/AppScreen';
+import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import {
   NOTEBOOK_CURRENCY_OPTIONS,
@@ -94,6 +96,7 @@ function formatDate(value: string) {
 }
 
 export function NotebooksScreen() {
+  const { openDefaultNotebook } = useLocalSearchParams<{ openDefaultNotebook?: string | string[] }>();
   const clearSelectedNotebookId = useAppStore((state) => state.clearSelectedNotebookId);
   const dataResetVersion = useAppStore((state) => state.dataResetVersion);
   const launchPreference = useAppStore((state) => state.launchPreference);
@@ -102,6 +105,9 @@ export function NotebooksScreen() {
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getNotebookColorOptions(colors), [colors]);
+  const shouldOpenDefaultNotebook =
+    openDefaultNotebook === '1' ||
+    (Array.isArray(openDefaultNotebook) && openDefaultNotebook.includes('1'));
 
   const loadNotebooksData = useCallback(
     (): { notebooks: Notebook[] } => ({
@@ -124,6 +130,7 @@ export function NotebooksScreen() {
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
   const [actionMenuNotebookId, setActionMenuNotebookId] = useState<string | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const didHandleInitialLaunch = useRef(false);
 
   useFocusEffect(
@@ -138,7 +145,7 @@ export function NotebooksScreen() {
   }, [dataResetVersion, reloadData]);
 
   useEffect(() => {
-    if (isLoading || didHandleInitialLaunch.current) {
+    if (isLoading || didHandleInitialLaunch.current || !shouldOpenDefaultNotebook) {
       return;
     }
 
@@ -157,7 +164,7 @@ export function NotebooksScreen() {
         params: { notebookId: defaultNotebook.id },
       });
     }
-  }, [isLoading, launchPreference, notebookEntryPath, notebooks, setSelectedNotebookId]);
+  }, [isLoading, launchPreference, notebookEntryPath, notebooks, setSelectedNotebookId, shouldOpenDefaultNotebook]);
 
   useEffect(() => {
     router.prefetch('/balance');
@@ -193,10 +200,12 @@ export function NotebooksScreen() {
     if (editingNotebook) {
       notebookRepository.update(editingNotebook.id, toInput(formValues));
       savedNotebookId = editingNotebook.id;
+      setSnackbarMessage('Guarida actualizada y lista para seguir cuidando tus rastros.');
     } else {
       const createdNotebook = notebookRepository.create(toInput(formValues));
       savedNotebookId = createdNotebook.id;
       categoryRepository.seedDefaultCategories(createdNotebook.id);
+      setSnackbarMessage('Nueva guarida lista para que Meowney la vigile.');
     }
 
     if (formValues.isDefault) {
@@ -216,6 +225,7 @@ export function NotebooksScreen() {
 
     notebookRepository.archive(deleteNotebook.id);
     setDeleteNotebook(null);
+    setSnackbarMessage('Guarida archivada fuera del mapa.');
     reloadData();
   };
 
@@ -229,7 +239,7 @@ export function NotebooksScreen() {
           accessibilityRole="button"
           onPress={() => {
             setSelectedNotebookId(item.id, item.name);
-            router.replace({ pathname: notebookEntryPath, params: { notebookId: item.id } });
+            router.push({ pathname: notebookEntryPath, params: { notebookId: item.id } });
           }}
           style={({ pressed }) => [styles.notebookContent, pressed && styles.notebookPressed]}
         >
@@ -297,7 +307,7 @@ export function NotebooksScreen() {
             data={isLoading ? [] : notebooks}
             keyExtractor={(item) => item.id}
             renderItem={renderNotebook}
-            ListHeaderComponent={<AppScreenHeader eyebrow="LIBRETAS" title="Control financiero" withBottomGap />}
+            ListHeaderComponent={<AppScreenHeader eyebrow="LIBRETAS" title="Guaridas financieras" withBottomGap />}
             contentContainerStyle={!isLoading && notebooks.length ? styles.listContent : styles.emptyContent}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
@@ -308,11 +318,11 @@ export function NotebooksScreen() {
               ) : (
                   <AppEmptyState
                     icon="notebook-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay libretas'}
+                    title={loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay guaridas'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea una libreta para separar cuentas, categorias y movimientos por contexto.'
+                        : 'Crea una libreta para que Meowney cuide cuentas, categorias y rastros por contexto.'
                     }
                     style={styles.emptyPanel}
                   />
@@ -321,14 +331,8 @@ export function NotebooksScreen() {
             showsVerticalScrollIndicator={false}
           />
           <AppDraggableFab style={styles.fabWrap}>
-            <IconButton
+            <AppCatFab
               accessibilityLabel="Nueva libreta"
-              icon="plus"
-              mode="contained"
-              iconColor={colors.onPrimary}
-              containerColor={colors.primary}
-              size={28}
-              style={styles.fab}
               onPress={openCreate}
             />
           </AppDraggableFab>
@@ -377,6 +381,11 @@ export function NotebooksScreen() {
           onConfirm={confirmDelete}
         />
       </Portal>
+
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }
@@ -608,13 +617,6 @@ function createStyles(colors: MeowneyColors) {
       bottom: 88,
       alignItems: 'flex-end',
       gap: spacing.sm,
-    },
-    fab: {
-      width: 56,
-      height: 56,
-      margin: 0,
-      opacity: 0.72,
-      borderRadius: 28,
     },
     menuContent: {
       borderRadius: radii.card,

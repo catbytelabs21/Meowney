@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   ScrollView,
   StyleSheet,
@@ -27,6 +28,46 @@ type AppScreenProps = AppScreenHeaderProps & {
   scroll?: boolean;
 };
 
+type MeowneyMarkerIcon = keyof typeof MaterialCommunityIcons.glyphMap;
+
+function getMeowneyMarkerIcon(eyebrow: string): MeowneyMarkerIcon {
+  const normalizedEyebrow = eyebrow.toUpperCase();
+
+  if (normalizedEyebrow.includes('LIBRETA')) {
+    return 'notebook-outline';
+  }
+
+  if (normalizedEyebrow.includes('BALANCE')) {
+    return 'scale-balance';
+  }
+
+  if (normalizedEyebrow.includes('CUENTA')) {
+    return 'wallet-outline';
+  }
+
+  if (normalizedEyebrow.includes('CATEGORIA')) {
+    return 'tag-outline';
+  }
+
+  if (normalizedEyebrow.includes('MOVIMIENTO')) {
+    return 'format-list-bulleted';
+  }
+
+  if (normalizedEyebrow.includes('PRESUPUESTO')) {
+    return 'chart-donut';
+  }
+
+  if (normalizedEyebrow.includes('AHORRO')) {
+    return 'treasure-chest-outline';
+  }
+
+  if (normalizedEyebrow.includes('MAS')) {
+    return 'dots-horizontal-circle-outline';
+  }
+
+  return 'view-dashboard-outline';
+}
+
 export function AppScreenHeader({
   eyebrow,
   style,
@@ -35,10 +76,14 @@ export function AppScreenHeader({
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const titleColor = colorScheme === 'light' ? colors.text : colors.pure;
+  const markerIcon = getMeowneyMarkerIcon(eyebrow);
 
   return (
     <View style={[styles.header, withBottomGap ? styles.headerBottomGap : null, style]}>
-      <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
+      <View style={styles.eyebrowRow}>
+        <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
+        <MaterialCommunityIcons name={markerIcon} size={18} color={colors.mutedText} />
+      </View>
     </View>
   );
 }
@@ -97,10 +142,17 @@ const styles = StyleSheet.create({
   header: {
     gap: 0,
   },
+  eyebrowRow: {
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   headerBottomGap: {
     marginBottom: spacing.lg,
   },
   eyebrow: {
+    flexShrink: 1,
     fontSize: typography.screenTitleSize,
     fontWeight: typography.mediumWeight,
     letterSpacing: 0,

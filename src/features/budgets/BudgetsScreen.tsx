@@ -21,11 +21,13 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
 import { AppLoadingState } from '@/components/ui/AppLoadingState';
+import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import { budgetRepository, type BudgetInput } from '@/database/repositories/budget.repository';
 import { categoryRepository } from '@/database/repositories/category.repository';
@@ -223,6 +225,7 @@ export function BudgetsScreen() {
   const [showCategoryError, setShowCategoryError] = useState(false);
   const [showDateError, setShowDateError] = useState(false);
   const [actionMenuBudgetId, setActionMenuBudgetId] = useState<string | null>(null);
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   const openCreate = () => {
     setFormValues(getInitialForm(data.categories));
@@ -270,8 +273,10 @@ export function BudgetsScreen() {
 
     if (editingBudget) {
       budgetRepository.update(editingBudget.id, input);
+      setSnackbarMessage('Limite actualizado; Meowney queda atento al gasto.');
     } else {
       budgetRepository.create(input);
+      setSnackbarMessage('Limite creado para cuidar esa categoria.');
     }
 
     closeForm();
@@ -285,6 +290,7 @@ export function BudgetsScreen() {
 
     budgetRepository.archive(deleteBudget.id);
     setDeleteBudget(null);
+    setSnackbarMessage('Limite archivado fuera de la guarida.');
     reloadBudgets();
   };
 
@@ -372,12 +378,12 @@ export function BudgetsScreen() {
           />
         }
       />
-      <AppScreen eyebrow="PRESUPUESTOS" title="Limites de gasto">
+      <AppScreen eyebrow="PRESUPUESTOS" title="Limites con garra">
         {!selectedNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
             title="Selecciona una libreta"
-            message="Entra primero a una libreta para crear presupuestos."
+            message="Entra primero a una guarida para crear limites de gasto."
             style={styles.missingNotebook}
           />
         ) : (
@@ -395,11 +401,11 @@ export function BudgetsScreen() {
                 ) : (
                   <AppEmptyState
                     icon="chart-donut"
-                    title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay presupuestos'}
+                    title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay limites'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea presupuestos por categoria para controlar tus gastos.'
+                        : 'Crea limites por categoria para que los gastos no saquen las unas.'
                     }
                     style={styles.emptyState}
                   />
@@ -408,15 +414,9 @@ export function BudgetsScreen() {
               showsVerticalScrollIndicator={false}
             />
             <AppDraggableFab style={styles.fabWrap}>
-              <IconButton
+              <AppCatFab
                 accessibilityLabel="Nuevo presupuesto"
-                icon="plus"
-                mode="contained"
-                iconColor={colors.onPrimary}
-                containerColor={colors.primary}
                 disabled={data.categories.length === 0}
-                size={28}
-                style={styles.fab}
                 onPress={openCreate}
               />
             </AppDraggableFab>
@@ -471,6 +471,11 @@ export function BudgetsScreen() {
           onConfirm={confirmDelete}
         />
       </Portal>
+
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }
@@ -726,13 +731,6 @@ function createStyles(colors: MeowneyColors) {
       bottom: 88,
       alignItems: 'flex-end',
       gap: spacing.sm,
-    },
-    fab: {
-      width: 56,
-      height: 56,
-      margin: 0,
-      opacity: 0.72,
-      borderRadius: 28,
     },
     infoDialogContent: {
       gap: spacing.md,

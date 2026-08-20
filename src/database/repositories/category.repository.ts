@@ -35,17 +35,25 @@ const defaultCategories: DefaultCategory[] = [
   { color: '#00B3DD', icon: 'cart-outline', name: 'Venta', type: 'income' },
   { color: '#DD90D8', icon: 'gift-outline', name: 'Regalo', type: 'income' },
   { color: '#847DFF', icon: 'chart-line', name: 'Intereses', type: 'income' },
-  { color: '#D1C9FF', icon: 'cash-plus', name: 'Ingreso extra', type: 'income' },
-  { color: '#FFB4AB', icon: 'silverware-fork-knife', name: 'Comida', type: 'expense' },
+  { color: '#D1C9FF', icon: 'paw-outline', name: 'Ingreso extra', type: 'income' },
+  { color: '#FFB4AB', icon: 'fish', name: 'Comida', type: 'expense' },
   { color: '#90B8F0', icon: 'bus', name: 'Transporte', type: 'expense' },
   { color: '#F1C27D', icon: 'home-outline', name: 'Hogar', type: 'expense' },
-  { color: '#CACACA', icon: 'lightning-bolt-outline', name: 'Servicios', type: 'expense' },
+  { color: '#CACACA', icon: 'bell-outline', name: 'Servicios', type: 'expense' },
   { color: '#DD90D8', icon: 'heart-pulse', name: 'Salud', type: 'expense' },
   { color: '#847DFF', icon: 'movie-open-outline', name: 'Entretenimiento', type: 'expense' },
   { color: '#00B3DD', icon: 'school-outline', name: 'Educacion', type: 'expense' },
-  { color: '#4B49AA', icon: 'shopping-outline', name: 'Compras', type: 'expense' },
-  { color: '#6A6B6B', icon: 'dots-horizontal-circle-outline', name: 'Otros gastos', type: 'expense' },
+  { color: '#4B49AA', icon: 'cart-outline', name: 'Compras', type: 'expense' },
+  { color: '#6A6B6B', icon: 'paw-outline', name: 'Otros gastos', type: 'expense' },
 ];
+
+const previousDefaultIcons: Record<string, string> = {
+  'income:Ingreso extra': 'cash-plus',
+  'expense:Comida': 'silverware-fork-knife',
+  'expense:Servicios': 'lightning-bolt-outline',
+  'expense:Compras': 'shopping-outline',
+  'expense:Otros gastos': 'dots-horizontal-circle-outline',
+};
 
 function mapCategory(row: CategoryRow): Category {
   return {
@@ -266,6 +274,25 @@ export const categoryRepository = {
           color: category.color,
           parentId: null,
         });
+        return;
+      }
+
+      const previousIcon = previousDefaultIcons[`${category.type}:${category.name}`];
+
+      if (previousIcon && existing.icon === previousIcon) {
+        database.runSync(
+          `
+            UPDATE category
+            SET icon = ?, updated_at = ?
+            WHERE id = ?
+              AND notebook_id = ?
+              AND archived_at IS NULL
+          `,
+          category.icon,
+          nowIso(),
+          existing.id,
+          notebookId,
+        );
       }
     });
   },

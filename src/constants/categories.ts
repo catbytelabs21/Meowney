@@ -7,15 +7,20 @@ export type CategoryTypeFilter = "all" | CategoryType;
 export type CategorySort = "nameAsc" | "nameDesc" | "updatedDesc";
 
 export const CATEGORY_ICON_OPTIONS: CategoryIconName[] = [
+  "fish",
+  "bell-outline",
+  "paw-outline",
+  "mouse-variant",
   "briefcase-outline",
   "cash-plus",
   "gift-outline",
+  "chart-line",
   "cart-outline",
-  "silverware-fork-knife",
   "bus",
   "home-outline",
   "heart-pulse",
   "movie-open-outline",
+  "school-outline",
   "dots-horizontal-circle-outline",
 ];
 
