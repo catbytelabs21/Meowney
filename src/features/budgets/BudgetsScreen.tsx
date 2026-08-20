@@ -295,7 +295,7 @@ export function BudgetsScreen() {
   };
 
   const renderBudget = ({ item }: { item: BudgetListItem }) => {
-    const iconName = (item.categoryIcon as BudgetIconName | null) ?? 'chart-donut';
+    const iconName: BudgetIconName = 'chart-donut';
     const color = item.categoryColor ?? colors.cyanSignal;
 
     return (

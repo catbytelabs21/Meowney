@@ -43,6 +43,12 @@ export function MoreScreen() {
       label: 'Presupuestos',
       onPress: () => router.push('/budgets'),
     },
+    {
+      description: 'Pagos recurrentes para planear el mes',
+      icon: 'calendar-sync-outline',
+      label: 'Suscripciones',
+      onPress: () => router.push('/subscriptions'),
+    },
   ];
 
   return (

@@ -57,6 +57,10 @@ function getMeowneyMarkerIcon(eyebrow: string): MeowneyMarkerIcon {
     return 'chart-donut';
   }
 
+  if (normalizedEyebrow.includes('SUSCRIPCION')) {
+    return 'calendar-sync-outline';
+  }
+
   if (normalizedEyebrow.includes('AHORRO')) {
     return 'treasure-chest-outline';
   }

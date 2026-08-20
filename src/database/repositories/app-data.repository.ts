@@ -8,6 +8,7 @@ const domainTablesInDeleteOrder = [
   '"transaction"',
   'budget',
   'goal',
+  'subscription',
   'account',
   'category',
   'notebook',
