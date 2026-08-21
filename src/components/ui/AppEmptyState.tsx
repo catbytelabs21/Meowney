@@ -37,25 +37,8 @@ export function AppEmptyState({
       ]}
       elevation={0}
     >
-      <View style={styles.pawMarkTop}>
-        <MaterialCommunityIcons name="fish" size={16} color={colors.mutedText} />
-      </View>
-      <View style={styles.pawMarkBottom}>
-        <MaterialCommunityIcons name="bell-outline" size={17} color={colors.mutedText} />
-      </View>
       <View style={styles.iconStage}>
         <MaterialCommunityIcons name="fish" size={36} color={colors.mutedText} />
-        <View
-          style={[
-            styles.catBadge,
-            {
-              backgroundColor: colors.background,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons name="fish" size={16} color={colors.text} />
-        </View>
       </View>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.message, { color: colors.mutedText }]}>{message}</Text>
@@ -81,31 +64,6 @@ const styles = StyleSheet.create({
     height: 58,
     alignItems: "center",
     justifyContent: "center",
-  },
-  catBadge: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    width: 26,
-    height: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderRadius: 13,
-  },
-  pawMarkTop: {
-    position: "absolute",
-    top: spacing.md,
-    right: spacing.lg,
-    opacity: 0.18,
-    transform: [{ rotate: "18deg" }],
-  },
-  pawMarkBottom: {
-    position: "absolute",
-    left: spacing.lg,
-    bottom: spacing.md,
-    opacity: 0.14,
-    transform: [{ rotate: "-16deg" }],
   },
   title: {
     fontSize: typography.subheadingSize,
