@@ -209,7 +209,7 @@ export function AppFormDialog({
               <Button textColor={colors.mutedText} onPress={onCancel}>
                 Cancelar
               </Button>
-              <Button textColor={colors.success} onPress={onSave}>
+              <Button icon="cat" textColor={colors.success} onPress={onSave}>
                 {renderedSnapshot.saveLabel}
               </Button>
             </View>

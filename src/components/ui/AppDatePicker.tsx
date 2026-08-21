@@ -51,6 +51,10 @@ function createMonthDateKeys(monthDate: Date) {
     days.push(toDateKey(new Date(monthDate.getFullYear(), monthDate.getMonth(), day)));
   }
 
+  while (days.length % 7 !== 0) {
+    days.push(null);
+  }
+
   return days;
 }
 
@@ -102,7 +106,17 @@ export function AppDatePickerDialog({
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const [view, setView] = useState<DatePickerView>('calendar');
   const [monthDate, setMonthDate] = useState(() => new Date(`${selectedDate}T12:00:00`));
+  const [calendarWidth, setCalendarWidth] = useState(0);
   const dateKeys = useMemo(() => createMonthDateKeys(monthDate), [monthDate]);
+  const calendarWeeks = useMemo(() => {
+    const weeks: (string | null)[][] = [];
+
+    for (let index = 0; index < dateKeys.length; index += 7) {
+      weeks.push(dateKeys.slice(index, index + 7));
+    }
+
+    return weeks;
+  }, [dateKeys]);
   const listDateKeys = useMemo(() => createMonthListDateKeys(monthDate), [monthDate]);
 
   useEffect(() => {
@@ -110,6 +124,9 @@ export function AppDatePickerDialog({
       setMonthDate(new Date(`${selectedDate}T12:00:00`));
     }
   }, [selectedDate, visible]);
+
+  const calendarColumnWidth = Math.floor(Math.max(0, calendarWidth - spacing.md * 2) / 7);
+  const calendarRowWidth = calendarColumnWidth * 7;
 
   return (
     <Dialog visible={visible} onDismiss={onDismiss} style={[styles.dialog, { backgroundColor: colors.surface }]}>
@@ -125,46 +142,59 @@ export function AppDatePickerDialog({
         </View>
 
         {view === 'calendar' ? (
-          <View style={[styles.datePickerSurface, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
+          <View
+            style={[styles.datePickerSurface, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}
+            onLayout={(event) => setCalendarWidth(event.nativeEvent.layout.width)}
+          >
             <MonthHeader colors={colors} monthDate={monthDate} onChangeMonth={setMonthDate} />
-            <View style={styles.weekRow}>
-              {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, index) => (
-                <Text key={`${day}_${index}`} style={[styles.weekLabel, { color: colors.mutedText }]}>
+            <View style={styles.calendarFrame}>
+              <View style={[styles.weekRow, { width: calendarRowWidth }]}>
+                {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map((day) => (
+                <Text key={day} style={[styles.weekLabel, { color: colors.mutedText, width: calendarColumnWidth }]}>
                   {day}
                 </Text>
               ))}
-            </View>
-            <View style={styles.calendarGrid}>
-              {dateKeys.map((dateKey, index) =>
-                dateKey ? (
-                  <Pressable
-                    key={dateKey}
-                    accessibilityRole="button"
-                    onPress={() => onSelect(dateKey)}
-                    style={({ pressed }) => [styles.calendarDay, pressed && { backgroundColor: colors.pressed }]}
-                  >
-                    <View
-                      style={[
-                        styles.calendarDayContent,
-                        dateKey === selectedDate && { backgroundColor: colors.selected },
-                        dateKey === today && { borderWidth: 1, borderColor: colors.primary },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.calendarDayText,
-                          { color: colors.text },
-                          dateKey === today && { color: colors.primary, fontWeight: typography.mediumWeight },
-                        ]}
-                      >
-                        {Number(dateKey.slice(-2))}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ) : (
-                  <View key={`empty_${index}`} style={styles.calendarDay} />
-                ),
-              )}
+              </View>
+              <View style={[styles.calendarGrid, { width: calendarRowWidth }]}>
+                {calendarWeeks.map((week, weekIndex) => (
+                  <View key={`week_${weekIndex}`} style={styles.calendarWeek}>
+                    {week.map((dateKey, dayIndex) =>
+                      dateKey ? (
+                        <Pressable
+                          key={dateKey}
+                          accessibilityRole="button"
+                          onPress={() => onSelect(dateKey)}
+                          style={({ pressed }) => [
+                            styles.calendarDay,
+                            { width: calendarColumnWidth },
+                            pressed && { backgroundColor: colors.pressed },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.calendarDayContent,
+                              dateKey === selectedDate && { backgroundColor: colors.selected },
+                              dateKey === today && { borderWidth: 1, borderColor: colors.primary },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.calendarDayText,
+                                { color: colors.text },
+                                dateKey === today && { color: colors.primary, fontWeight: typography.mediumWeight },
+                              ]}
+                            >
+                              {Number(dateKey.slice(-2))}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      ) : (
+                        <View key={`empty_${weekIndex}_${dayIndex}`} style={[styles.calendarDay, { width: calendarColumnWidth }]} />
+                      ),
+                    )}
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         ) : (
@@ -260,12 +290,12 @@ const styles = StyleSheet.create({
   },
   datePickerSurface: {
     overflow: 'hidden',
-    height: 372,
+    height: 340,
     borderWidth: 1,
     borderRadius: radii.card,
   },
   monthHeader: {
-    minHeight: 52,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -278,26 +308,26 @@ const styles = StyleSheet.create({
     fontSize: typography.bodySize,
     fontWeight: typography.bodyWeight,
   },
+  calendarFrame: {
+    alignItems: 'center',
+  },
   weekRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   weekLabel: {
-    flex: 1,
-    fontSize: typography.monoLabelSize,
+    fontSize: 10,
     fontWeight: typography.mediumWeight,
     textAlign: 'center',
   },
   calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
+  calendarWeek: {
+    flexDirection: 'row',
+  },
   calendarDay: {
-    width: `${100 / 7}%`,
-    height: 48,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 2,
@@ -305,7 +335,7 @@ const styles = StyleSheet.create({
   },
   calendarDayContent: {
     width: '100%',
-    height: 40,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

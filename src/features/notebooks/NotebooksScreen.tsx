@@ -1,13 +1,13 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
-} from 'react-native';
+} from "react-native";
 import {
   Button,
   HelperText,
@@ -17,33 +17,45 @@ import {
   Surface,
   Text,
   TextInput,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { AppScreenHeader } from '@/components/layout/AppScreen';
-import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
-import { AppEmptyState } from '@/components/ui/AppEmptyState';
-import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine, AppOptionToggle } from '@/components/ui/AppFormFields';
-import { AppLoadingState } from '@/components/ui/AppLoadingState';
-import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
-import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
+import { AppScreenHeader } from "@/components/layout/AppScreen";
+import { AppCatFab } from "@/components/ui/AppCatFab";
+import { AppEmptyState } from "@/components/ui/AppEmptyState";
+import {
+  AppColorPicker,
+  AppDescriptionInput,
+  AppIconPickerGrid,
+  AppInfoLine,
+  AppOptionToggle,
+} from "@/components/ui/AppFormFields";
+import { AppLoadingState } from "@/components/ui/AppLoadingState";
+import { AppMeowneySnackbar } from "@/components/ui/AppMeowneySnackbar";
+import {
+  AppConfirmDialog,
+  AppContentDialog,
+  AppFormDialog,
+} from "@/components/ui/AppFormDialog";
 import {
   NOTEBOOK_CURRENCY_OPTIONS,
   NOTEBOOK_ICON_OPTIONS,
   getNotebookColorOptions,
   type NotebookIconName,
-} from '@/constants/notebooks';
-import { categoryRepository } from '@/database/repositories/category.repository';
-import { notebookRepository, type NotebookInput } from '@/database/repositories/notebook.repository';
-import { useDeferredQuery } from '@/hooks/useDeferredQuery';
-import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
-import { radii } from '@/theme/radii';
-import { spacing } from '@/theme/spacing';
-import { typography } from '@/theme/typography';
-import { formatAppDateTime } from '@/utils/dateFormat';
-import type { Notebook } from './types';
+} from "@/constants/notebooks";
+import { categoryRepository } from "@/database/repositories/category.repository";
+import {
+  notebookRepository,
+  type NotebookInput,
+} from "@/database/repositories/notebook.repository";
+import { useDeferredQuery } from "@/hooks/useDeferredQuery";
+import { useAppStore } from "@/stores/app.store";
+import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { radii } from "@/theme/radii";
+import { spacing } from "@/theme/spacing";
+import { typography } from "@/theme/typography";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import type { Notebook } from "./types";
 
 type NotebookFormValues = {
   name: string;
@@ -56,11 +68,11 @@ type NotebookFormValues = {
 
 function getInitialForm(colors: MeowneyColors): NotebookFormValues {
   return {
-    name: '',
-    description: '',
-    icon: 'notebook-outline',
+    name: "",
+    description: "",
+    icon: "notebook-outline",
     color: colors.irisGleam,
-    currency: 'MXN',
+    currency: "MXN",
     isDefault: false,
   };
 }
@@ -73,7 +85,7 @@ function getFormFromNotebook(
 
   return {
     name: notebook.name,
-    description: notebook.description ?? '',
+    description: notebook.description ?? "",
     icon: (notebook.icon as NotebookIconName | null) ?? fallback.icon,
     color: notebook.color ?? fallback.color,
     currency: notebook.currency,
@@ -96,18 +108,24 @@ function formatDate(value: string) {
 }
 
 export function NotebooksScreen() {
-  const { openDefaultNotebook } = useLocalSearchParams<{ openDefaultNotebook?: string | string[] }>();
-  const clearSelectedNotebookId = useAppStore((state) => state.clearSelectedNotebookId);
+  const { openDefaultNotebook } = useLocalSearchParams<{
+    openDefaultNotebook?: string | string[];
+  }>();
+  const clearSelectedNotebookId = useAppStore(
+    (state) => state.clearSelectedNotebookId,
+  );
   const dataResetVersion = useAppStore((state) => state.dataResetVersion);
   const launchPreference = useAppStore((state) => state.launchPreference);
-  const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
+  const setSelectedNotebookId = useAppStore(
+    (state) => state.setSelectedNotebookId,
+  );
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = colorScheme === "light" ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getNotebookColorOptions(colors), [colors]);
   const shouldOpenDefaultNotebook =
-    openDefaultNotebook === '1' ||
-    (Array.isArray(openDefaultNotebook) && openDefaultNotebook.includes('1'));
+    openDefaultNotebook === "1" ||
+    (Array.isArray(openDefaultNotebook) && openDefaultNotebook.includes("1"));
 
   const loadNotebooksData = useCallback(
     (): { notebooks: Notebook[] } => ({
@@ -122,14 +140,17 @@ export function NotebooksScreen() {
     reload: reloadData,
   } = useDeferredQuery(loadNotebooksData, { notebooks: [] });
   const { notebooks } = notebooksData;
-  const notebookEntryPath = '/balance' as const;
+  const notebookEntryPath = "/more" as const;
   const [infoNotebook, setInfoNotebook] = useState<Notebook | null>(null);
   const [deleteNotebook, setDeleteNotebook] = useState<Notebook | null>(null);
   const [editingNotebook, setEditingNotebook] = useState<Notebook | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
-  const [actionMenuNotebookId, setActionMenuNotebookId] = useState<string | null>(null);
+  const [actionMenuNotebookId, setActionMenuNotebookId] = useState<
+    string | null
+  >(null);
+  const [isNotebookHelpOpen, setIsNotebookHelpOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const didHandleInitialLaunch = useRef(false);
 
@@ -145,13 +166,17 @@ export function NotebooksScreen() {
   }, [dataResetVersion, reloadData]);
 
   useEffect(() => {
-    if (isLoading || didHandleInitialLaunch.current || !shouldOpenDefaultNotebook) {
+    if (
+      isLoading ||
+      didHandleInitialLaunch.current ||
+      !shouldOpenDefaultNotebook
+    ) {
       return;
     }
 
     didHandleInitialLaunch.current = true;
 
-    if (launchPreference === 'defaultNotebook') {
+    if (launchPreference === "defaultNotebook") {
       const defaultNotebook = notebooks.find((notebook) => notebook.isDefault);
 
       if (!defaultNotebook) {
@@ -164,10 +189,17 @@ export function NotebooksScreen() {
         params: { notebookId: defaultNotebook.id },
       });
     }
-  }, [isLoading, launchPreference, notebookEntryPath, notebooks, setSelectedNotebookId, shouldOpenDefaultNotebook]);
+  }, [
+    isLoading,
+    launchPreference,
+    notebookEntryPath,
+    notebooks,
+    setSelectedNotebookId,
+    shouldOpenDefaultNotebook,
+  ]);
 
   useEffect(() => {
-    router.prefetch('/balance');
+    router.prefetch("/more");
   }, []);
 
   const openCreate = () => {
@@ -200,12 +232,14 @@ export function NotebooksScreen() {
     if (editingNotebook) {
       notebookRepository.update(editingNotebook.id, toInput(formValues));
       savedNotebookId = editingNotebook.id;
-      setSnackbarMessage('Guarida actualizada y lista para seguir cuidando tus rastros.');
+      setSnackbarMessage(
+        "Guarida actualizada y lista para seguir cuidando tus rastros.",
+      );
     } else {
       const createdNotebook = notebookRepository.create(toInput(formValues));
       savedNotebookId = createdNotebook.id;
       categoryRepository.seedDefaultCategories(createdNotebook.id);
-      setSnackbarMessage('Nueva guarida lista para que Meowney la vigile.');
+      setSnackbarMessage("Nueva guarida lista para que Meowney la vigile.");
     }
 
     if (formValues.isDefault) {
@@ -225,12 +259,13 @@ export function NotebooksScreen() {
 
     notebookRepository.archive(deleteNotebook.id);
     setDeleteNotebook(null);
-    setSnackbarMessage('Guarida archivada fuera del mapa.');
+    setSnackbarMessage("Guarida archivada fuera del mapa.");
     reloadData();
   };
 
   const renderNotebook = ({ item }: { item: Notebook }) => {
-    const iconName = (item.icon as NotebookIconName | null) ?? 'notebook-outline';
+    const iconName =
+      (item.icon as NotebookIconName | null) ?? "notebook-outline";
     const color = item.color ?? colors.irisGleam;
 
     return (
@@ -239,12 +274,22 @@ export function NotebooksScreen() {
           accessibilityRole="button"
           onPress={() => {
             setSelectedNotebookId(item.id, item.name);
-            router.push({ pathname: notebookEntryPath, params: { notebookId: item.id } });
+            router.push({
+              pathname: notebookEntryPath,
+              params: { notebookId: item.id },
+            });
           }}
-          style={({ pressed }) => [styles.notebookContent, pressed && styles.notebookPressed]}
+          style={({ pressed }) => [
+            styles.notebookContent,
+            pressed && styles.notebookPressed,
+          ]}
         >
           <View style={[styles.notebookIconWrap, { backgroundColor: color }]}>
-            <MaterialCommunityIcons name={iconName} size={20} color={colors.void} />
+            <MaterialCommunityIcons
+              name={iconName}
+              size={20}
+              color={colors.void}
+            />
           </View>
           <View style={styles.nameCopy}>
             <View style={styles.notebookTitleLine}>
@@ -252,11 +297,15 @@ export function NotebooksScreen() {
                 {item.name}
               </Text>
               {item.isDefault ? (
-                <MaterialCommunityIcons name="star" size={15} color={colors.warning} />
+                <MaterialCommunityIcons
+                  name="star"
+                  size={15}
+                  color={colors.warning}
+                />
               ) : null}
             </View>
             <Text numberOfLines={1} style={styles.notebookMeta}>
-              {item.currency}
+              {item.description || `Espacio en ${item.currency}`}
             </Text>
           </View>
         </Pressable>
@@ -284,7 +333,11 @@ export function NotebooksScreen() {
               setInfoNotebook(item);
             }}
           />
-          <Menu.Item leadingIcon="pencil-outline" title="Editar" onPress={() => openEdit(item)} />
+          <Menu.Item
+            leadingIcon="pencil-outline"
+            title="Editar"
+            onPress={() => openEdit(item)}
+          />
           <Menu.Item
             leadingIcon="trash-can-outline"
             title="Eliminar"
@@ -300,15 +353,40 @@ export function NotebooksScreen() {
 
   return (
     <View style={styles.safeArea}>
-      <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.contentSafeArea}>
+      <SafeAreaView
+        edges={["left", "right", "bottom"]}
+        style={styles.contentSafeArea}
+      >
         <View style={styles.container}>
           <FlatList
             style={styles.list}
             data={isLoading ? [] : notebooks}
             keyExtractor={(item) => item.id}
             renderItem={renderNotebook}
-            ListHeaderComponent={<AppScreenHeader eyebrow="LIBRETAS" title="Guaridas financieras" withBottomGap />}
-            contentContainerStyle={!isLoading && notebooks.length ? styles.listContent : styles.emptyContent}
+            ListHeaderComponent={
+              <View style={styles.headerWrap}>
+                <View style={styles.headerTopRow}>
+                  <AppScreenHeader
+                    eyebrow="LIBRETAS"
+                    title="Tus libretas"
+                    style={styles.headerTitle}
+                  />
+                  <IconButton
+                    accessibilityLabel="Que es una libreta"
+                    icon="help-circle-outline"
+                    iconColor={colors.mutedText}
+                    size={22}
+                    style={styles.helpButton}
+                    onPress={() => setIsNotebookHelpOpen(true)}
+                  />
+                </View>
+              </View>
+            }
+            contentContainerStyle={
+              !isLoading && notebooks.length
+                ? styles.listContent
+                : styles.emptyContent
+            }
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
               isLoading ? (
@@ -316,26 +394,32 @@ export function NotebooksScreen() {
                   <AppLoadingState colors={colors} label="Cargando libretas" />
                 </Surface>
               ) : (
-                  <AppEmptyState
-                    icon="notebook-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las libretas' : 'Aun no hay guaridas'}
-                    message={
-                      loadError
-                        ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea una libreta para que Meowney cuide cuentas, categorias y rastros por contexto.'
-                    }
-                    style={styles.emptyPanel}
-                  />
+                <AppEmptyState
+                  icon="notebook-plus-outline"
+                  title={
+                    loadError
+                      ? "No se pudieron cargar las libretas"
+                      : "Crea tu primera libreta"
+                  }
+                  message={
+                    loadError
+                      ? "Intenta entrar de nuevo o revisa que la base de datos este disponible."
+                      : "Empieza con un espacio simple: Casa, Ahorro, Negocio o Viaje."
+                  }
+                  style={styles.emptyPanel}
+                />
               )
             }
             showsVerticalScrollIndicator={false}
           />
-          <AppDraggableFab style={styles.fabWrap}>
+          <View style={styles.bottomAction}>
             <AppCatFab
-              accessibilityLabel="Nueva libreta"
+              accessibilityLabel="Agregar libreta"
+              label="Agregar libreta"
+              style={styles.addNotebookButton}
               onPress={openCreate}
             />
-          </AppDraggableFab>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -352,19 +436,45 @@ export function NotebooksScreen() {
           {infoNotebook ? (
             <>
               <AppInfoLine label="Titulo" value={infoNotebook.name} />
-              <AppInfoLine label="Descripcion" value={infoNotebook.description || 'Sin descripcion'} />
+              <AppInfoLine
+                label="Descripcion"
+                value={infoNotebook.description || "Sin descripcion"}
+              />
               <AppInfoLine label="Moneda" value={infoNotebook.currency} />
-              <AppInfoLine label="Creacion" value={formatDate(infoNotebook.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDate(infoNotebook.updatedAt)} />
+              <AppInfoLine
+                label="Creacion"
+                value={formatDate(infoNotebook.createdAt)}
+              />
+              <AppInfoLine
+                label="Actualizacion"
+                value={formatDate(infoNotebook.updatedAt)}
+              />
             </>
           ) : null}
+        </AppContentDialog>
+
+        <AppContentDialog
+          visible={isNotebookHelpOpen}
+          title="Que es una libreta?"
+          titleIcon="help-circle-outline"
+          titleIconColor={colors.text}
+          contentContainerStyle={styles.infoDialogContent}
+          onAction={() => setIsNotebookHelpOpen(false)}
+          onDismiss={() => setIsNotebookHelpOpen(false)}
+        >
+          <Text style={styles.helpDialogText}>
+            Una libreta es un espacio separado donde Meowney te ayuda a cuidar
+            cuentas, movimientos y presupuestos. Puedes crear una para tus
+            finanzas personales, otra para un familiar, tu negocio, un viaje o
+            cualquier objetivo que quieras llevar aparte.
+          </Text>
         </AppContentDialog>
 
         <NotebookFormDialog
           colors={colors}
           styles={styles}
           visible={isCreateOpen || Boolean(editingNotebook)}
-          title={editingNotebook ? 'Editar libreta' : 'Nueva libreta'}
+          title={editingNotebook ? "Editar libreta" : "Nueva libreta"}
           values={formValues}
           showNameError={showNameError}
           colorOptions={colorOptions}
@@ -428,82 +538,82 @@ function NotebookFormDialog({
       onCancel={onCancel}
       onSave={onSave}
     >
-            <View style={styles.fieldGroup}>
-              <Text style={styles.pickerLabel}>NOMBRE</Text>
-              <TextInput
-                mode="outlined"
-                placeholder="Ej. Casa"
-                value={values.name}
-                onChangeText={(name) => onChange({ ...values, name })}
-                error={showNameError}
-              />
-              {showNameError ? (
-                <HelperText type="error" visible>
-                  El nombre es obligatorio.
-                </HelperText>
-              ) : null}
-            </View>
+      <View style={styles.fieldGroup}>
+        <Text style={styles.pickerLabel}>NOMBRE</Text>
+        <TextInput
+          mode="outlined"
+          placeholder="Ej. Casa"
+          value={values.name}
+          onChangeText={(name) => onChange({ ...values, name })}
+          error={showNameError}
+        />
+        {showNameError ? (
+          <HelperText type="error" visible>
+            El nombre es obligatorio.
+          </HelperText>
+        ) : null}
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>DESCRIPCION</Text>
-              <AppDescriptionInput
-                placeholder="Ej. Gastos del hogar"
-                value={values.description}
-                scrollRef={formScrollRef}
-                onChangeText={(description) => onChange({ ...values, description })}
-              />
-            </View>
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>DESCRIPCION</Text>
+        <AppDescriptionInput
+          placeholder="Ej. Gastos del hogar"
+          value={values.description}
+          scrollRef={formScrollRef}
+          onChangeText={(description) => onChange({ ...values, description })}
+        />
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>ICONO</Text>
-              <AppIconPickerGrid
-                columns={5}
-                icons={NOTEBOOK_ICON_OPTIONS}
-                selectedIcon={values.icon}
-                onSelect={(icon) => onChange({ ...values, icon })}
-              />
-            </View>
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>ICONO</Text>
+        <AppIconPickerGrid
+          columns={5}
+          icons={NOTEBOOK_ICON_OPTIONS}
+          selectedIcon={values.icon}
+          onSelect={(icon) => onChange({ ...values, icon })}
+        />
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>COLOR</Text>
-              <AppColorPicker
-                colors={colorOptions}
-                selectedColor={values.color}
-                onSelect={(color) => onChange({ ...values, color })}
-              />
-            </View>
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>COLOR</Text>
+        <AppColorPicker
+          colors={colorOptions}
+          selectedColor={values.color}
+          onSelect={(color) => onChange({ ...values, color })}
+        />
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>MONEDA</Text>
-              <View style={styles.currencyRow}>
-                {NOTEBOOK_CURRENCY_OPTIONS.map((currency) => {
-                  const selected = values.currency === currency;
-                  return (
-                    <Button
-                      key={currency}
-                      mode={selected ? 'contained' : 'outlined'}
-                      compact
-                      buttonColor={selected ? colors.primary : undefined}
-                      textColor={selected ? colors.onPrimary : colors.text}
-                      onPress={() => onChange({ ...values, currency })}
-                      style={styles.currencyButton}
-                    >
-                      {currency}
-                    </Button>
-                  );
-                })}
-              </View>
-            </View>
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>MONEDA</Text>
+        <View style={styles.currencyRow}>
+          {NOTEBOOK_CURRENCY_OPTIONS.map((currency) => {
+            const selected = values.currency === currency;
+            return (
+              <Button
+                key={currency}
+                mode={selected ? "contained" : "outlined"}
+                compact
+                buttonColor={selected ? colors.primary : undefined}
+                textColor={selected ? colors.onPrimary : colors.text}
+                onPress={() => onChange({ ...values, currency })}
+                style={styles.currencyButton}
+              >
+                {currency}
+              </Button>
+            );
+          })}
+        </View>
+      </View>
 
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>PREDETERMINADA</Text>
-              <AppOptionToggle
-                checked={values.isDefault}
-                checkedLabel="Predeterminada"
-                uncheckedLabel="Usar por defecto"
-                onToggle={() => onChange({ ...values, isDefault: !values.isDefault })}
-              />
-            </View>
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>PREDETERMINADA</Text>
+        <AppOptionToggle
+          checked={values.isDefault}
+          checkedLabel="Predeterminada"
+          uncheckedLabel="Usar por defecto"
+          onToggle={() => onChange({ ...values, isDefault: !values.isDefault })}
+        />
+      </View>
     </AppFormDialog>
   );
 }
@@ -529,19 +639,44 @@ function createStyles(colors: MeowneyColors) {
       flexGrow: 1,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
+    },
+    headerWrap: {
+      marginBottom: spacing.lg,
+    },
+    headerTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.sm,
+    },
+    headerTitle: {
+      flex: 1,
+      minWidth: 0,
+    },
+    helpButton: {
+      width: 40,
+      height: 40,
+      margin: 0,
+      borderRadius: radii.navItem,
+    },
+    helpDialogText: {
+      color: colors.mutedText,
+      fontSize: typography.bodySize,
+      lineHeight: 24,
+      textAlign: "justify",
     },
     notebookRow: {
       minHeight: 68,
-      flexDirection: 'row',
-      alignItems: 'center',
-      overflow: 'hidden',
+      flexDirection: "row",
+      alignItems: "center",
+      overflow: "hidden",
       borderWidth: 1,
       borderColor: colors.pressed,
       borderRadius: radii.input,
@@ -550,8 +685,8 @@ function createStyles(colors: MeowneyColors) {
     notebookContent: {
       flex: 1,
       minHeight: 68,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
       paddingVertical: spacing.sm + 2,
       paddingLeft: spacing.md,
@@ -563,8 +698,8 @@ function createStyles(colors: MeowneyColors) {
     notebookIconWrap: {
       width: 40,
       height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: radii.input,
     },
     nameCopy: {
@@ -574,8 +709,8 @@ function createStyles(colors: MeowneyColors) {
     },
     notebookTitleLine: {
       minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.xs,
     },
     notebookName: {
@@ -602,8 +737,8 @@ function createStyles(colors: MeowneyColors) {
     },
     emptyPanel: {
       minHeight: 240,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       gap: spacing.sm,
       borderWidth: 1,
       borderColor: colors.border,
@@ -611,12 +746,17 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fabWrap: {
-      position: 'absolute',
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: 'flex-end',
-      gap: spacing.sm,
+    bottomAction: {
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    addNotebookButton: {
+      width: "70%",
     },
     menuContent: {
       borderRadius: radii.card,
@@ -646,8 +786,8 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     currencyRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: spacing.sm,
     },
     currencyButton: {

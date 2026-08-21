@@ -12,7 +12,7 @@ import { darkColors, lightColors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
 
 export const unstable_settings = {
-  initialRouteName: 'balance',
+  initialRouteName: 'more',
 };
 
 type TabIconName = keyof typeof MaterialCommunityIcons.glyphMap;
@@ -49,7 +49,7 @@ export default function TabsLayout() {
         }
       />
       <Tabs
-        initialRouteName="balance"
+        initialRouteName="more"
         screenOptions={{
           animation: 'shift',
           headerShown: false,
@@ -58,7 +58,6 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: colors.background,
             borderTopColor: colors.border,
-            position: 'absolute',
           },
           sceneStyle: {
             backgroundColor: colors.background,
@@ -73,16 +72,16 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen
-          name="balance"
-          options={{ title: 'Balance', tabBarIcon: tabIcon('scale-balance') }}
-        />
-        <Tabs.Screen
           name="history-movements"
-          options={{ title: 'Movimientos', tabBarIcon: tabIcon('format-list-bulleted') }}
+          options={{ title: 'Movimientos', tabBarIcon: tabIcon('swap-vertical') }}
         />
         <Tabs.Screen
           name="more"
-          options={{ title: 'Mas', tabBarIcon: tabIcon('dots-horizontal-circle-outline') }}
+          options={{ title: 'Mi libreta', tabBarIcon: tabIcon('book-open-page-variant-outline') }}
+        />
+        <Tabs.Screen
+          name="balance"
+          options={{ title: 'Mi dinero', tabBarIcon: tabIcon('wallet-outline') }}
         />
       </Tabs>
     </View>

@@ -2,11 +2,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { Button, Divider, HelperText, IconButton, Portal, Surface, Text, TextInput } from 'react-native-paper';
+import { Divider, HelperText, IconButton, Portal, Surface, Text, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
+import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -219,7 +220,7 @@ export function SavingsScreen() {
       setSnackbarMessage('Tesoro actualizado y guardado en la guarida.');
     } else {
       goalRepository.create(input);
-      setSnackbarMessage('Nuevo tesoro listo para crecer.');
+      setSnackbarMessage('Ahorro agregado y listo para crecer.');
     }
 
     closeForm();
@@ -273,9 +274,14 @@ export function SavingsScreen() {
     <View style={styles.safeArea}>
       <AppHeader
         title={stableNotebookName ?? 'Meowney'}
-        left={<AppHeaderActionButton accessibilityLabel="Regresar a mas" icon="arrow-left" onPress={() => router.back()} />}
+        left={<AppHeaderActionButton accessibilityLabel="Regresar a Mi libreta" icon="arrow-left" onPress={() => router.back()} />}
       />
-      <AppScreen eyebrow="AHORROS" title="Tesoros y reservas">
+      <AppScreen
+        eyebrow="AHORROS"
+        title="Tesoros y reservas"
+        helpTitle="Para que sirven los ahorros?"
+        helpMessage="Los ahorros son tesoros que Meowney te ayuda a apartar para una meta. Puedes seguir cuanto llevas, cuanto falta y en que cuenta esta guardado ese dinero."
+      >
           {!activeNotebookId ? (
             <AppEmptyState
               icon="book-alert-outline"
@@ -304,7 +310,7 @@ export function SavingsScreen() {
                     <AppEmptyState
                       icon="piggy-bank-outline"
                       title={loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay tesoros'}
-                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Crea una meta para separar objetivos, reservas y pequenos botines.'}
+                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Aqui apareceran tus metas de ahorro. Crea un tesoro para apartar dinero para viajes, emergencias, compras o cualquier objetivo.'}
                       style={styles.emptyState}
                     />
                   )
@@ -312,9 +318,13 @@ export function SavingsScreen() {
               />
               <Divider />
               <View style={styles.fixedAction}>
-                <Button mode="contained" icon="plus" onPress={openCreate} disabled={data.accounts.length === 0} buttonColor={colors.primary} textColor={colors.onPrimary} style={styles.createButton} contentStyle={styles.createButtonContent}>
-                  Nuevo ahorro
-                </Button>
+                <AppCatFab
+                  accessibilityLabel="Agregar ahorro"
+                  disabled={data.accounts.length === 0}
+                  label="Agregar ahorro"
+                  style={styles.createButton}
+                  onPress={openCreate}
+                />
               </View>
             </Surface>
           )}
@@ -324,7 +334,7 @@ export function SavingsScreen() {
         <AppContentDialog
           visible={Boolean(infoGoal)}
           title="Informacion"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoGoal(null)}
@@ -351,7 +361,7 @@ export function SavingsScreen() {
           showDateError={showDateError}
           showNameError={showNameError}
           styles={styles}
-          title={editingGoal ? 'Editar ahorro' : 'Nuevo ahorro'}
+          title={editingGoal ? 'Editar ahorro' : 'Agregar ahorro'}
           values={formValues}
           visible={isFormOpen}
           onCancel={closeForm}
@@ -414,13 +424,13 @@ function SavingFormDialog({
     <AppFormDialog visible={visible} title={title} contentContainerStyle={styles.form} onCancel={onCancel} onSave={onSave}>
       <View style={styles.fieldGroup}>
         <Text style={styles.pickerLabel}>NOMBRE</Text>
-        <TextInput mode="outlined" placeholder="Ej. Viaje" value={values.name} onChangeText={(name) => onChange({ ...values, name })} error={showNameError} />
-        {showNameError ? <HelperText type="error" visible>El nombre es obligatorio.</HelperText> : null}
+        <TextInput mode="outlined" placeholder="Ej. Viaje, Emergencia o Auto" value={values.name} onChangeText={(name) => onChange({ ...values, name })} error={showNameError} />
+        {showNameError ? <HelperText type="error" visible>Escribe un nombre para esta meta.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>DESCRIPCION</Text>
-        <TextInput mode="outlined" placeholder="Ej. Fondo para vacaciones" value={values.description} multiline numberOfLines={3} onChangeText={(description) => onChange({ ...values, description })} />
+        <TextInput mode="outlined" placeholder="Ej. Dinero apartado para vacaciones" value={values.description} multiline numberOfLines={3} onChangeText={(description) => onChange({ ...values, description })} />
       </View>
 
       <View style={styles.pickerGroup}>
@@ -439,19 +449,19 @@ function SavingFormDialog({
           menuContentStyle={styles.menuContent}
           onSelect={(accountId) => onChange({ ...values, accountId })}
         />
-        {showAccountError ? <HelperText type="error" visible>Selecciona una cuenta.</HelperText> : null}
+        {showAccountError ? <HelperText type="error" visible>Elige en que cuenta se guardara este ahorro.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>MONTO OBJETIVO</Text>
-        <TextInput mode="outlined" placeholder="Ej. 10000.00" keyboardType="decimal-pad" value={values.targetAmount} onChangeText={(targetAmount) => onChange({ ...values, targetAmount })} error={showAmountError} />
-        {showAmountError ? <HelperText type="error" visible>Ingresa un monto mayor a cero.</HelperText> : null}
+        <TextInput mode="outlined" placeholder="Ej. 10000" keyboardType="decimal-pad" value={values.targetAmount} onChangeText={(targetAmount) => onChange({ ...values, targetAmount })} error={showAmountError} />
+        {showAmountError ? <HelperText type="error" visible>Escribe cuanto quieres juntar, mayor a cero.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>FECHA OBJETIVO</Text>
         <TextInput mode="outlined" placeholder="Ej. 2026-12-31" value={values.targetDate} onChangeText={(targetDate) => onChange({ ...values, targetDate })} error={showDateError} />
-        {showDateError ? <HelperText type="error" visible>Usa el formato aaaa-mm-dd.</HelperText> : null}
+        {showDateError ? <HelperText type="error" visible>Usa una fecha valida en formato aaaa-mm-dd.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
@@ -566,9 +576,17 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fixedAction: { padding: spacing.md, backgroundColor: colors.surface },
-    createButton: { borderRadius: radii.button },
-    createButtonContent: { minHeight: 48 },
+    fixedAction: {
+      alignItems: 'center',
+      marginHorizontal: -spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    createButton: { width: '70%' },
     infoDialogContent: {
       gap: spacing.md,
       paddingHorizontal: spacing.lg,

@@ -22,7 +22,6 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -295,7 +294,7 @@ export function BudgetsScreen() {
   };
 
   const renderBudget = ({ item }: { item: BudgetListItem }) => {
-    const iconName: BudgetIconName = 'chart-donut';
+    const iconName: BudgetIconName = 'cash-lock';
     const color = item.categoryColor ?? colors.cyanSignal;
 
     return (
@@ -338,7 +337,7 @@ export function BudgetsScreen() {
           }
         >
           <Menu.Item
-            leadingIcon="eye-outline"
+            leadingIcon="information-outline"
             title="Ver"
             onPress={() => {
               setActionMenuBudgetId(null);
@@ -372,13 +371,18 @@ export function BudgetsScreen() {
         title={stableNotebookName ?? 'Meowney'}
         left={
           <AppHeaderActionButton
-            accessibilityLabel="Regresar a mas"
+            accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
             onPress={() => router.replace('/more')}
           />
         }
       />
-      <AppScreen eyebrow="PRESUPUESTOS" title="Limites con garra">
+      <AppScreen
+        eyebrow="PRESUPUESTOS"
+        title="Limites con garra"
+        helpTitle="Para que sirven los presupuestos?"
+        helpMessage="Los presupuestos son limites para que Meowney te ayude a no gastar de mas en una categoria. Define cuanto quieres permitir y revisa si esa parte de la libreta sigue bajo control."
+      >
         {!selectedNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
@@ -400,12 +404,12 @@ export function BudgetsScreen() {
                   <AppLoadingState colors={colors} label="Cargando presupuestos" />
                 ) : (
                   <AppEmptyState
-                    icon="chart-donut"
+                    icon="cash-lock"
                     title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay limites'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea limites por categoria para que los gastos no saquen las unas.'
+                        : 'Aqui apareceran tus limites de gasto por categoria. Crea un presupuesto para saber cuanto puedes gastar y cuando Meowney debe avisarte que vas cerca del limite.'
                     }
                     style={styles.emptyState}
                   />
@@ -413,13 +417,15 @@ export function BudgetsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <AppDraggableFab style={styles.fabWrap}>
+            <View style={styles.bottomAction}>
               <AppCatFab
-                accessibilityLabel="Nuevo presupuesto"
+                accessibilityLabel="Agregar presupuesto"
                 disabled={data.categories.length === 0}
+                label="Agregar presupuesto"
+                style={styles.addButton}
                 onPress={openCreate}
               />
-            </AppDraggableFab>
+            </View>
           </>
         )}
       </AppScreen>
@@ -428,7 +434,7 @@ export function BudgetsScreen() {
         <AppContentDialog
           visible={Boolean(infoBudget)}
           title="Informacion"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoBudget(null)}
@@ -454,7 +460,7 @@ export function BudgetsScreen() {
           showCategoryError={showCategoryError}
           showDateError={showDateError}
           styles={styles}
-          title={editingBudget ? 'Editar presupuesto' : 'Nuevo presupuesto'}
+          title={editingBudget ? 'Editar presupuesto' : 'Agregar presupuesto'}
           values={formValues}
           visible={isFormOpen}
           onCancel={closeForm}
@@ -538,7 +544,7 @@ function BudgetFormDialog({
               />
               {showCategoryError ? (
                 <HelperText type="error" visible>
-                  Selecciona una categoria.
+                  Elige la categoria que quieres vigilar.
                 </HelperText>
               ) : null}
             </View>
@@ -547,7 +553,7 @@ function BudgetFormDialog({
               <Text style={styles.pickerLabel}>MONTO</Text>
               <TextInput
                 mode="outlined"
-                placeholder="Ej. 1500.00"
+                placeholder="Ej. 1500"
                 keyboardType="decimal-pad"
                 value={values.amount}
                 onChangeText={(amount) => onChange({ ...values, amount })}
@@ -555,7 +561,7 @@ function BudgetFormDialog({
               />
               {showAmountError ? (
                 <HelperText type="error" visible>
-                  Ingresa un monto mayor a cero.
+                  Escribe el limite que quieres cuidar, mayor a cero.
                 </HelperText>
               ) : null}
             </View>
@@ -610,7 +616,7 @@ function BudgetFormDialog({
                 </View>
                 {showDateError ? (
                   <HelperText type="error" visible>
-                    Usa el formato aaaa-mm-dd.
+                    Usa fechas validas en formato aaaa-mm-dd.
                   </HelperText>
                 ) : null}
               </>
@@ -630,11 +636,11 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     budgetRow: {
       minHeight: 76,
@@ -725,12 +731,18 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fabWrap: {
-      position: 'absolute',
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: 'flex-end',
-      gap: spacing.sm,
+    bottomAction: {
+      alignItems: 'center',
+      marginHorizontal: -spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    addButton: {
+      width: '70%',
     },
     infoDialogContent: {
       gap: spacing.md,

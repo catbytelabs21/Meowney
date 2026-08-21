@@ -24,7 +24,6 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -240,7 +239,7 @@ export function AccountsScreen() {
           }
         >
           <Menu.Item
-            leadingIcon="eye-outline"
+            leadingIcon="information-outline"
             title="Ver"
             onPress={() => {
               setActionMenuAccountId(null);
@@ -274,13 +273,18 @@ export function AccountsScreen() {
         title={activeNotebookName ?? stableNotebookName ?? 'Meowney'}
         left={
           <AppHeaderActionButton
-            accessibilityLabel="Regresar a mas"
+            accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
             onPress={() => router.back()}
           />
         }
       />
-      <AppScreen eyebrow="CUENTAS" title="Saldos vigilados">
+      <AppScreen
+        eyebrow="CUENTAS"
+        title="Saldos vigilados"
+        helpTitle="Para que sirven las cuentas?"
+        helpMessage="Las cuentas son los lugares donde vive tu dinero: efectivo, banco, tarjeta, ahorro o wallet. Meowney las vigila para que cada movimiento tenga de donde entrar o salir."
+      >
         {!activeNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
@@ -312,7 +316,7 @@ export function AccountsScreen() {
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Agrega una cuenta para que Meowney empiece a cuidar saldos, tarjetas o efectivo.'
+                        : 'Aqui apareceran tus bancos, efectivo, tarjetas o wallets. Agrega una cuenta para que cada ingreso o gasto tenga de donde entrar o salir.'
                     }
                     style={styles.emptyState}
                   />
@@ -320,12 +324,14 @@ export function AccountsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <AppDraggableFab style={styles.fabWrap}>
+            <View style={styles.bottomAction}>
               <AppCatFab
-                accessibilityLabel="Nueva cuenta"
+                accessibilityLabel="Agregar cuenta"
+                label="Agregar cuenta"
+                style={styles.addButton}
                 onPress={openCreate}
               />
-            </AppDraggableFab>
+            </View>
           </>
         )}
       </AppScreen>
@@ -334,7 +340,7 @@ export function AccountsScreen() {
         <AppContentDialog
           visible={Boolean(infoAccount)}
           title="Detalle"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoAccount(null)}
@@ -354,7 +360,7 @@ export function AccountsScreen() {
         <AccountFormDialog
           styles={styles}
           visible={isCreateOpen || Boolean(editingAccount)}
-          title={editingAccount ? 'Editar cuenta' : 'Nueva cuenta'}
+          title={editingAccount ? 'Editar cuenta' : 'Agregar cuenta'}
           values={formValues}
           showNameError={showNameError}
           colorOptions={colorOptions}
@@ -421,14 +427,14 @@ function AccountFormDialog({
         <Text style={styles.pickerLabel}>NOMBRE</Text>
         <TextInput
           mode="outlined"
-          placeholder="Ej. Tarjeta principal"
+          placeholder="Ej. Banco principal, Efectivo o Tarjeta"
           value={values.name}
           onChangeText={(name) => onChange({ ...values, name })}
           error={showNameError}
         />
         {showNameError ? (
           <HelperText type="error" visible>
-            El nombre es obligatorio.
+            Escribe un nombre para reconocer esta cuenta.
           </HelperText>
         ) : null}
       </View>
@@ -436,7 +442,7 @@ function AccountFormDialog({
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>DESCRIPCION</Text>
         <AppDescriptionInput
-          placeholder="Ej. Cuenta para pagos diarios"
+          placeholder="Ej. Dinero para pagos diarios"
           scrollRef={formScrollRef}
           value={values.description}
           onChangeText={(description) => onChange({ ...values, description })}
@@ -491,11 +497,11 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     accountRow: {
       minHeight: 68,
@@ -576,12 +582,18 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fabWrap: {
-      position: 'absolute',
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: 'flex-end',
-      gap: spacing.sm,
+    bottomAction: {
+      alignItems: 'center',
+      marginHorizontal: -spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    addButton: {
+      width: '70%',
     },
     menuContent: {
       borderRadius: radii.card,

@@ -1,14 +1,14 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Surface, Text } from 'react-native-paper';
-import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { AppScreen } from '@/components/layout/AppScreen';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
-import { radii } from '@/theme/radii';
-import { spacing } from '@/theme/spacing';
-import { typography } from '@/theme/typography';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useMemo } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Surface, Text } from "react-native-paper";
+import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
+import { AppScreen } from "@/components/layout/AppScreen";
+import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { radii } from "@/theme/radii";
+import { spacing } from "@/theme/spacing";
+import { typography } from "@/theme/typography";
 
 type MoreIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -21,39 +21,59 @@ type MoreItem = {
 
 export function MoreScreen() {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = colorScheme === "light" ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const managementItems: MoreItem[] = [
+  const setupItems: MoreItem[] = [
     {
-      description: 'Saldos que Meowney vigila',
-      icon: 'wallet-outline',
-      label: 'Cuentas',
-      onPress: () => router.push('/accounts'),
+      description: "Donde vive tu dinero",
+      icon: "wallet-outline",
+      label: "Cuentas",
+      onPress: () => router.push("/accounts"),
     },
     {
-      description: 'Etiquetas para seguir rastros',
-      icon: 'tag-outline',
-      label: 'Categorias',
-      onPress: () => router.push('/categories'),
+      description: "Etiquetas para ordenar ingresos y gastos",
+      icon: "tag-outline",
+      label: "Categorias",
+      onPress: () => router.push("/categories"),
+    },
+  ];
+
+  const controlItems: MoreItem[] = [
+    {
+      description: "Limites para cuidar tus gastos",
+      icon: "cash-lock",
+      label: "Presupuestos",
+      onPress: () => router.push("/budgets"),
     },
     {
-      description: 'Limites para no gastar con garra',
-      icon: 'chart-donut',
-      label: 'Presupuestos',
-      onPress: () => router.push('/budgets'),
-    },
-    {
-      description: 'Pagos recurrentes para planear el mes',
-      icon: 'calendar-sync-outline',
-      label: 'Suscripciones',
-      onPress: () => router.push('/subscriptions'),
+      description: "Pagos que regresan cada cierto tiempo",
+      icon: "calendar-sync-outline",
+      label: "Suscripciones",
+      onPress: () => router.push("/subscriptions"),
     },
   ];
 
   return (
-    <AppScreen eyebrow="MAS" title="Herramientas" scroll>
-      <MoreSection items={managementItems} label="RINCON DE CONTROL" styles={styles} colors={colors} />
+    <AppScreen
+      eyebrow="MI LIBRETA"
+      title="Centro de control"
+      helpTitle="Para que sirve Mi libreta?"
+      helpMessage="Aqui esta el centro de control de esta libreta. Desde este punto Meowney te deja abrir cuentas, categorias, presupuestos y otros cuidados para mantener tus finanzas separadas y bien vigiladas."
+      scroll
+    >
+      <MoreSection
+        items={setupItems}
+        label="PARA EMPEZAR"
+        styles={styles}
+        colors={colors}
+      />
+      <MoreSection
+        items={controlItems}
+        label="CONTROL"
+        styles={styles}
+        colors={colors}
+      />
     </AppScreen>
   );
 }
@@ -82,7 +102,11 @@ function MoreSection({ colors, items, label, styles }: MoreSectionProps) {
             ]}
           >
             <View style={styles.itemIcon}>
-              <MaterialCommunityIcons name={item.icon} size={21} color={colors.text} />
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={21}
+                color={colors.text}
+              />
             </View>
             <View style={styles.itemCopy}>
               <Text style={styles.itemTitle}>{item.label}</Text>
@@ -90,7 +114,11 @@ function MoreSection({ colors, items, label, styles }: MoreSectionProps) {
                 {item.description}
               </Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.mutedText} />
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={22}
+              color={colors.mutedText}
+            />
           </Pressable>
         ))}
       </Surface>
@@ -110,7 +138,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     sectionSurface: {
-      overflow: 'hidden',
+      overflow: "hidden",
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,
@@ -118,8 +146,8 @@ function createStyles(colors: MeowneyColors) {
     },
     item: {
       minHeight: 76,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
@@ -134,8 +162,8 @@ function createStyles(colors: MeowneyColors) {
     itemIcon: {
       width: 40,
       height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: radii.navItem,
       backgroundColor: colors.selected,
     },
@@ -156,5 +184,3 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
-
-

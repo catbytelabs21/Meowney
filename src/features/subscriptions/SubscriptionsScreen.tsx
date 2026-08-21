@@ -9,7 +9,6 @@ import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
 import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -324,7 +323,7 @@ export function SubscriptionsScreen() {
           }
         >
           <Menu.Item
-            leadingIcon="eye-outline"
+            leadingIcon="information-outline"
             title="Ver"
             onPress={() => {
               setActionMenuSubscriptionId(null);
@@ -352,19 +351,154 @@ export function SubscriptionsScreen() {
     );
   };
 
+  const subscriptionFilters = (
+    <View style={styles.filterSection}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
+        onPress={() => setShowFilters((current) => !current)}
+        style={({ pressed }) => [
+          styles.filterToggle,
+          pressed ? styles.filterTogglePressed : null,
+        ]}
+      >
+        <Text style={styles.filterToggleText}>Filtros</Text>
+        <View style={styles.filterToggleSpacer} />
+        <View style={styles.chevronButton}>
+          <MaterialCommunityIcons
+            name={showFilters ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={colors.mutedText}
+          />
+        </View>
+      </Pressable>
+      <AppAnimatedDisclosure
+        visible={showFilters}
+        maxHeight={180}
+        style={styles.filterGroups}
+      >
+        <View style={styles.filterGroup}>
+          <Text style={styles.filterGroupLabel}>Periodo</Text>
+          <View style={styles.filterGrid}>
+            <View style={styles.filterControl}>
+              <AppSelectMenu
+                anchor="icon"
+                icon="calendar-range-outline"
+                label="Periodo"
+                options={filterOptions}
+                selectedLabel={filterLabel}
+                selectedValue={frequencyFilter}
+                iconButtonStyle={styles.filterIconButton}
+                menuContentStyle={styles.menuContent}
+                onSelect={setFrequencyFilter}
+              />
+            </View>
+          </View>
+        </View>
+        <View style={styles.filterGroup}>
+          <Text style={styles.filterGroupLabel}>Seleccion</Text>
+          <View style={styles.filterGrid}>
+            <View style={styles.filterControl}>
+              <AppActionMenu
+                visible={selectionMenuOpen}
+                onDismiss={() => setSelectionMenuOpen(false)}
+                contentStyle={styles.menuContent}
+                anchor={
+                  <IconButton
+                    accessibilityLabel="Acciones de seleccion"
+                    icon="checkbox-marked-circle-outline"
+                    iconColor={colors.text}
+                    size={20}
+                    style={styles.filterIconButton}
+                    onPress={() => setSelectionMenuOpen(true)}
+                  />
+                }
+              >
+                <Menu.Item
+                  leadingIcon="checkbox-multiple-marked-outline"
+                  title="Seleccionar visibles"
+                  onPress={() => {
+                    setSelectedSubscriptionIds(filteredSubscriptions.map((subscription) => subscription.id));
+                    setSelectionMenuOpen(false);
+                  }}
+                />
+                <Menu.Item
+                  leadingIcon="checkbox-multiple-blank-outline"
+                  title="Limpiar seleccion"
+                  onPress={() => {
+                    setSelectedSubscriptionIds([]);
+                    setSelectionMenuOpen(false);
+                  }}
+                />
+              </AppActionMenu>
+            </View>
+          </View>
+        </View>
+      </AppAnimatedDisclosure>
+      <View style={styles.filterContextSpacer} />
+      <Text numberOfLines={1} style={styles.filterContextText}>
+        Periodo: {filterLabel}
+      </Text>
+    </View>
+  );
+
+  const subscriptionsOverview = (
+    <View style={styles.summaryHeader}>
+      <View style={styles.summarySection}>
+        <View style={styles.summaryTitleRow}>
+          <Text style={styles.summaryTitle}>Resumen mensual</Text>
+          <Text style={styles.summaryCount}>{data.subscriptions.length} registradas</Text>
+        </View>
+
+        <Surface style={styles.summaryTable} elevation={0}>
+          <View style={styles.metricRow}>
+            <View style={styles.metricIcon}>
+              <MaterialCommunityIcons name="cash-check" size={18} color={colors.text} />
+            </View>
+            <View style={styles.metricCopy}>
+              <Text numberOfLines={1} style={styles.metricLabel}>Seleccionados</Text>
+              <Text style={styles.metricHint}>{selectedSubscriptions.length} pagos incluidos</Text>
+            </View>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
+              {formatAmount(selectedTotal, data.currency)}
+            </Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricRow}>
+            <View style={styles.metricIcon}>
+              <MaterialCommunityIcons name="calendar-month-outline" size={18} color={colors.text} />
+            </View>
+            <View style={styles.metricCopy}>
+              <Text numberOfLines={1} style={styles.metricLabel}>Costo mensual</Text>
+              <Text style={styles.metricHint}>Convertido a monto mensual</Text>
+            </View>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
+              {formatAmount(monthlyAverage, data.currency)}
+            </Text>
+          </View>
+        </Surface>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.safeArea}>
       <AppHeader
         title={stableNotebookName ?? 'Meowney'}
         left={
           <AppHeaderActionButton
-            accessibilityLabel="Regresar a mas"
+            accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
             onPress={() => router.replace('/more')}
           />
         }
       />
-      <AppScreen eyebrow="SUSCRIPCIONES" title="Pagos recurrentes">
+      <AppScreen
+        eyebrow="SUSCRIPCIONES"
+        title="Pagos recurrentes"
+        helpTitle="Para que sirven las suscripciones?"
+        helpMessage="Las suscripciones son pagos que regresan cada cierto tiempo. Meowney las deja en vigilancia para que recuerdes que vienen, cuanto cuestan y desde que cuenta salen."
+      >
         {!selectedNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
@@ -374,128 +508,13 @@ export function SubscriptionsScreen() {
           />
         ) : (
           <>
-            <View style={styles.topStack}>
-              <View style={styles.filterSection}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
-                  onPress={() => setShowFilters((current) => !current)}
-                  style={({ pressed }) => [
-                    styles.filterToggle,
-                    pressed ? styles.filterTogglePressed : null,
-                  ]}
-                >
-                  <Text style={styles.filterToggleText}>Filtros</Text>
-                  <View style={styles.filterToggleSpacer} />
-                  <View style={styles.chevronButton}>
-                    <MaterialCommunityIcons
-                      name={showFilters ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color={colors.mutedText}
-                    />
-                  </View>
-                </Pressable>
-                <AppAnimatedDisclosure
-                  visible={showFilters}
-                  maxHeight={48}
-                  style={styles.filterGrid}
-                >
-                  <View style={styles.filterControl}>
-                    <AppSelectMenu
-                      anchor="icon"
-                      icon="calendar-range-outline"
-                      label="Periodo"
-                      options={filterOptions}
-                      selectedLabel={filterLabel}
-                      selectedValue={frequencyFilter}
-                      iconButtonStyle={styles.filterIconButton}
-                      menuContentStyle={styles.menuContent}
-                      onSelect={setFrequencyFilter}
-                    />
-                  </View>
-                  <View style={styles.filterControl}>
-                    <AppActionMenu
-                      visible={selectionMenuOpen}
-                      onDismiss={() => setSelectionMenuOpen(false)}
-                      contentStyle={styles.menuContent}
-                      anchor={
-                        <IconButton
-                          accessibilityLabel="Acciones de seleccion"
-                          icon="playlist-check"
-                          iconColor={colors.text}
-                          size={20}
-                          style={styles.filterIconButton}
-                          onPress={() => setSelectionMenuOpen(true)}
-                        />
-                      }
-                    >
-                      <Menu.Item
-                        leadingIcon="checkbox-multiple-marked-outline"
-                        title="Seleccionar visibles"
-                        onPress={() => {
-                          setSelectedSubscriptionIds(filteredSubscriptions.map((subscription) => subscription.id));
-                          setSelectionMenuOpen(false);
-                        }}
-                      />
-                      <Menu.Item
-                        leadingIcon="checkbox-multiple-blank-outline"
-                        title="Limpiar seleccion"
-                        onPress={() => {
-                          setSelectedSubscriptionIds([]);
-                          setSelectionMenuOpen(false);
-                        }}
-                      />
-                    </AppActionMenu>
-                  </View>
-                </AppAnimatedDisclosure>
-                <Text numberOfLines={1} style={styles.filterContextText}>
-                  Periodo: {filterLabel}
-                </Text>
-              </View>
-
-              <View style={styles.sectionDivider} />
-
-              <View style={styles.summarySection}>
-                <View style={styles.summaryTitleRow}>
-                  <Text style={styles.summaryTitle}>RESUMEN</Text>
-                  <Text style={styles.summaryCount}>{data.subscriptions.length} registradas</Text>
-                </View>
-
-                <Surface style={styles.summaryTable} elevation={0}>
-                  <View style={styles.metricRow}>
-                    <View style={styles.metricIcon}>
-                      <MaterialCommunityIcons name="cash-check" size={18} color={colors.text} />
-                    </View>
-                    <View style={styles.metricCopy}>
-                      <Text style={styles.metricLabel}>Seleccionadas</Text>
-                      <Text style={styles.metricHint}>{selectedSubscriptions.length} incluidas</Text>
-                    </View>
-                    <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
-                      {formatAmount(selectedTotal, data.currency)}
-                    </Text>
-                  </View>
-                  <View style={styles.metricDivider} />
-                  <View style={styles.metricRow}>
-                    <View style={styles.metricIcon}>
-                      <MaterialCommunityIcons name="calendar-month-outline" size={18} color={colors.text} />
-                    </View>
-                    <View style={styles.metricCopy}>
-                      <Text style={styles.metricLabel}>Promedio mensual</Text>
-                      <Text style={styles.metricHint}>Todo prorrateado</Text>
-                    </View>
-                    <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
-                      {formatAmount(monthlyAverage, data.currency)}
-                    </Text>
-                  </View>
-                </Surface>
-              </View>
-            </View>
-
+            {subscriptionFilters}
             <FlatList
               style={styles.list}
               data={isLoading ? [] : filteredSubscriptions}
               keyExtractor={(item) => item.id}
               renderItem={renderSubscription}
+              ListHeaderComponent={subscriptionsOverview}
               contentContainerStyle={!isLoading && filteredSubscriptions.length ? styles.listContent : styles.emptyContent}
               ItemSeparatorComponent={() => <View style={styles.separator} />}
               ListEmptyComponent={
@@ -508,7 +527,7 @@ export function SubscriptionsScreen() {
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Agrega pagos recurrentes para simular cuanto se juntaria en un mes.'
+                        : 'Aqui apareceran pagos que se repiten, como streaming, renta o servicios. Agrega una suscripcion para saber cuanto se junta cada mes y desde que cuenta sale.'
                     }
                     style={styles.emptyState}
                   />
@@ -516,9 +535,14 @@ export function SubscriptionsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <AppDraggableFab style={styles.fabWrap}>
-              <AppCatFab accessibilityLabel="Nueva suscripcion" onPress={openCreate} />
-            </AppDraggableFab>
+            <View style={styles.bottomAction}>
+              <AppCatFab
+                accessibilityLabel="Agregar suscripcion"
+                label="Agregar suscripcion"
+                style={styles.addButton}
+                onPress={openCreate}
+              />
+            </View>
           </>
         )}
       </AppScreen>
@@ -527,7 +551,7 @@ export function SubscriptionsScreen() {
         <AppContentDialog
           visible={Boolean(infoSubscription)}
           title="Informacion"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoSubscription(null)}
@@ -551,7 +575,7 @@ export function SubscriptionsScreen() {
           showAmountError={showAmountError}
           showNameError={showNameError}
           styles={styles}
-          title={editingSubscription ? 'Editar suscripcion' : 'Nueva suscripcion'}
+          title={editingSubscription ? 'Editar suscripcion' : 'Agregar suscripcion'}
           values={formValues}
           visible={isFormOpen}
           onCancel={closeForm}
@@ -605,25 +629,25 @@ function SubscriptionFormDialog({
         <Text style={styles.pickerLabel}>NOMBRE</Text>
         <TextInput
           mode="outlined"
-          placeholder="Ej. Netflix"
+          placeholder="Ej. Netflix, Renta o Gimnasio"
           value={values.name}
           onChangeText={(name) => onChange({ ...values, name })}
           error={showNameError}
         />
-        {showNameError ? <HelperText type="error" visible>El nombre es obligatorio.</HelperText> : null}
+        {showNameError ? <HelperText type="error" visible>Escribe el nombre del pago recurrente.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>MONTO</Text>
         <TextInput
           mode="outlined"
-          placeholder="Ej. 199.00"
+          placeholder="Ej. 199"
           keyboardType="decimal-pad"
           value={values.amount}
           onChangeText={(amount) => onChange({ ...values, amount })}
           error={showAmountError}
         />
-        {showAmountError ? <HelperText type="error" visible>Ingresa un monto mayor a cero.</HelperText> : null}
+        {showAmountError ? <HelperText type="error" visible>Escribe cuanto cuesta, mayor a cero.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
@@ -644,7 +668,7 @@ function SubscriptionFormDialog({
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>NOTAS</Text>
         <AppDescriptionInput
-          placeholder="Ej. Plan familiar"
+          placeholder="Ej. Plan familiar o fecha de cobro"
           value={values.notes}
           onChangeText={(notes) => onChange({ ...values, notes })}
         />
@@ -678,15 +702,8 @@ function createStyles(colors: MeowneyColors) {
       flex: 1,
       backgroundColor: colors.background,
     },
-    topStack: {
-      gap: spacing.ms,
-      marginBottom: spacing.sm,
-    },
-    sectionDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginTop: spacing.xs,
-      marginBottom: spacing.xs,
+    summaryHeader: {
+      paddingBottom: spacing.md,
     },
     summarySection: {
       gap: spacing.sm,
@@ -705,12 +722,13 @@ function createStyles(colors: MeowneyColors) {
       borderRadius: radii.card,
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
     },
     summaryTitle: {
       color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
+      fontSize: typography.bodySmallSize,
       fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
+      lineHeight: 18,
     },
     summaryCount: {
       color: colors.mutedText,
@@ -719,7 +737,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     metricRow: {
-      minHeight: 58,
+      minHeight: 62,
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
@@ -790,6 +808,9 @@ function createStyles(colors: MeowneyColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    filterContextSpacer: {
+      height: spacing.sm,
+    },
     filterContextText: {
       color: colors.mutedText,
       fontSize: typography.monoLabelSize,
@@ -804,6 +825,22 @@ function createStyles(colors: MeowneyColors) {
       flexWrap: 'wrap',
       alignItems: 'center',
       gap: spacing.sm,
+    },
+    filterGroups: {
+      width: '100%',
+      gap: spacing.md,
+    },
+    filterGroup: {
+      gap: spacing.sm,
+    },
+    filterGroupLabel: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      lineHeight: 16,
+      paddingHorizontal: spacing.xs,
+      textTransform: 'uppercase',
     },
     filterControl: {
       flexShrink: 0,
@@ -822,11 +859,11 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     subscriptionRow: {
       minHeight: 78,
@@ -932,12 +969,18 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fabWrap: {
-      position: 'absolute',
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: 'flex-end',
-      gap: spacing.sm,
+    bottomAction: {
+      alignItems: 'center',
+      marginHorizontal: -spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    addButton: {
+      width: '70%',
     },
     infoDialogContent: {
       gap: spacing.md,

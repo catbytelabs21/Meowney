@@ -24,7 +24,6 @@ import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
 import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppDraggableFab } from '@/components/ui/AppDraggableFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
 import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
@@ -144,7 +143,7 @@ export function CategoriesScreen() {
   const [showNameError, setShowNameError] = useState(false);
   const [typeFilter, setTypeFilter] = useState<CategoryTypeFilter>('all');
   const [sortOrder, setSortOrder] = useState<CategorySort>('nameAsc');
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [actionMenuCategoryId, setActionMenuCategoryId] = useState<string | null>(null);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
@@ -266,7 +265,7 @@ export function CategoriesScreen() {
           }
         >
           <Menu.Item
-            leadingIcon="eye-outline"
+            leadingIcon="information-outline"
             title="Ver"
             onPress={() => {
               setActionMenuCategoryId(null);
@@ -300,13 +299,18 @@ export function CategoriesScreen() {
         title={activeNotebookName ?? stableNotebookName ?? 'Meowney'}
         left={
           <AppHeaderActionButton
-            accessibilityLabel="Regresar a mas"
+            accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
             onPress={() => router.back()}
           />
         }
       />
-      <AppScreen eyebrow="CATEGORIAS" title="Etiquetas de rastreo">
+      <AppScreen
+        eyebrow="CATEGORIAS"
+        title="Etiquetas de rastreo"
+        helpTitle="Para que sirven las categorias?"
+        helpMessage="Las categorias son etiquetas para que Meowney siga el rastro de tus ingresos y gastos. Usalas para saber en que se va el dinero: comida, casa, transporte, sueldo u otros movimientos."
+      >
         {!activeNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
@@ -335,32 +339,42 @@ export function CategoriesScreen() {
                 </View>
               </Pressable>
 
-              <AppAnimatedDisclosure visible={showFilters} maxHeight={132} style={styles.filterGrid}>
-                <View style={styles.filterControl}>
-                  <AppSelectMenu
-                    anchor="icon"
-                    icon="swap-vertical"
-                    label="Tipo"
-                    options={CATEGORY_TYPE_FILTER_OPTIONS}
-                    selectedLabel={selectedTypeFilterLabel}
-                    selectedValue={typeFilter}
-                    iconButtonStyle={styles.filterIconButton}
-                    menuContentStyle={styles.typeMenuContent}
-                    onSelect={setTypeFilter}
-                  />
+              <AppAnimatedDisclosure visible={showFilters} maxHeight={180} style={styles.filterGroups}>
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterGroupLabel}>Tipo</Text>
+                  <View style={styles.filterGrid}>
+                    <View style={styles.filterControl}>
+                      <AppSelectMenu
+                        anchor="icon"
+                        icon="swap-vertical"
+                        label="Tipo"
+                        options={CATEGORY_TYPE_FILTER_OPTIONS}
+                        selectedLabel={selectedTypeFilterLabel}
+                        selectedValue={typeFilter}
+                        iconButtonStyle={styles.filterIconButton}
+                        menuContentStyle={styles.typeMenuContent}
+                        onSelect={setTypeFilter}
+                      />
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.filterControl}>
-                  <AppSelectMenu
-                    anchor="icon"
-                    icon="sort"
-                    label="Orden"
-                    options={CATEGORY_SORT_OPTIONS}
-                    selectedLabel={selectedSortLabel}
-                    selectedValue={sortOrder}
-                    iconButtonStyle={styles.filterIconButton}
-                    menuContentStyle={styles.typeMenuContent}
-                    onSelect={setSortOrder}
-                  />
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterGroupLabel}>Orden</Text>
+                  <View style={styles.filterGrid}>
+                    <View style={styles.filterControl}>
+                      <AppSelectMenu
+                        anchor="icon"
+                        icon="sort"
+                        label="Orden"
+                        options={CATEGORY_SORT_OPTIONS}
+                        selectedLabel={selectedSortLabel}
+                        selectedValue={sortOrder}
+                        iconButtonStyle={styles.filterIconButton}
+                        menuContentStyle={styles.typeMenuContent}
+                        onSelect={setSortOrder}
+                      />
+                    </View>
+                  </View>
                 </View>
               </AppAnimatedDisclosure>
               <View style={styles.filterContextSpacer} />
@@ -386,7 +400,7 @@ export function CategoriesScreen() {
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Crea etiquetas para que Meowney rastree ingresos y gastos con mas precision.'
+                        : 'Aqui apareceran las etiquetas para ordenar tu dinero. Crea categorias como comida, casa, sueldo o transporte para entender en que se mueve cada peso.'
                     }
                     style={styles.emptyState}
                   />
@@ -394,12 +408,14 @@ export function CategoriesScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <AppDraggableFab style={styles.fabWrap}>
+            <View style={styles.bottomAction}>
               <AppCatFab
-                accessibilityLabel="Nueva categoria"
+                accessibilityLabel="Agregar categoria"
+                label="Agregar categoria"
+                style={styles.addButton}
                 onPress={openCreate}
               />
-            </AppDraggableFab>
+            </View>
           </>
         )}
       </AppScreen>
@@ -408,7 +424,7 @@ export function CategoriesScreen() {
         <AppContentDialog
           visible={Boolean(infoCategory)}
           title="Detalle"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoCategory(null)}
@@ -427,7 +443,7 @@ export function CategoriesScreen() {
         <CategoryFormDialog
           styles={styles}
           visible={isCreateOpen || Boolean(editingCategory)}
-          title={editingCategory ? 'Editar categoria' : 'Nueva categoria'}
+          title={editingCategory ? 'Editar categoria' : 'Agregar categoria'}
           values={formValues}
           showNameError={showNameError}
           colorOptions={colorOptions}
@@ -490,14 +506,14 @@ function CategoryFormDialog({
               <Text style={styles.pickerLabel}>NOMBRE</Text>
               <TextInput
                 mode="outlined"
-                placeholder="Ej. Comida"
+                placeholder="Ej. Comida, Sueldo o Transporte"
                 value={values.name}
                 onChangeText={(name) => onChange({ ...values, name })}
                 error={showNameError}
               />
               {showNameError ? (
                 <HelperText type="error" visible>
-                  El nombre es obligatorio.
+                  Escribe un nombre para esta categoria.
                 </HelperText>
               ) : null}
             </View>
@@ -598,6 +614,22 @@ function createStyles(colors: MeowneyColors) {
       alignItems: 'center',
       gap: spacing.sm,
     },
+    filterGroups: {
+      width: '100%',
+      gap: spacing.md,
+    },
+    filterGroup: {
+      gap: spacing.sm,
+    },
+    filterGroupLabel: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      lineHeight: 16,
+      paddingHorizontal: spacing.xs,
+      textTransform: 'uppercase',
+    },
     filterControl: {
       flexShrink: 0,
     },
@@ -615,11 +647,11 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     categoryRow: {
       minHeight: 68,
@@ -700,12 +732,18 @@ function createStyles(colors: MeowneyColors) {
       backgroundColor: colors.surface,
       padding: spacing.lg,
     },
-    fabWrap: {
-      position: 'absolute',
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: 'flex-end',
-      gap: spacing.md,
+    bottomAction: {
+      alignItems: 'center',
+      marginHorizontal: -spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    addButton: {
+      width: '70%',
     },
     menuContent: {
       borderRadius: radii.card,

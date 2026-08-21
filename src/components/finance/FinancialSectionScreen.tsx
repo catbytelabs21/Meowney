@@ -28,7 +28,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { AppAnimatedDisclosure } from "@/components/ui/AppAnimatedDisclosure";
 import { AppCatFab } from "@/components/ui/AppCatFab";
-import { AppDraggableFab } from "@/components/ui/AppDraggableFab";
 import { AppEmptyState } from "@/components/ui/AppEmptyState";
 import {
   AppDateInput,
@@ -283,6 +282,29 @@ function getPreviousMonthRange(dateKey: string) {
 
 function formatMovementTitleDate(value: string) {
   return formatAppDate(value);
+}
+
+function formatMovementGroupDate(value: string, todayKey: string) {
+  const dateKey = value.slice(0, 10);
+
+  if (dateKey === todayKey) {
+    return "Hoy";
+  }
+
+  const yesterday = new Date(toDateTime(todayKey));
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (dateKey === toDateKey(yesterday)) {
+    return "Ayer";
+  }
+
+  const label = new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  }).format(new Date(toDateTime(dateKey)));
+
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
 }
 
 function formatMovementMonth(value: string) {
@@ -574,39 +596,40 @@ function groupMovementsByMonth(
   movements: MovementItem[],
   expandedMonths: Set<string>,
   visibleMovementCountsByMonth: Record<string, number>,
+  todayKey: string,
 ): MovementListRow[] {
   const rows: MovementListRow[] = [];
-  const movementsByMonth = new Map<string, MovementItem[]>();
-  const seenMonths = new Set<string>();
+  const movementsByDate = new Map<string, MovementItem[]>();
+  const seenDates = new Set<string>();
 
   movements.forEach((movement) => {
-    const monthKey = movement.occurredAt.slice(0, 7);
-    movementsByMonth.set(monthKey, [
-      ...(movementsByMonth.get(monthKey) ?? []),
+    const dateKey = movement.occurredAt.slice(0, 10);
+    movementsByDate.set(dateKey, [
+      ...(movementsByDate.get(dateKey) ?? []),
       movement,
     ]);
   });
 
   movements.forEach((movement) => {
-    const monthKey = movement.occurredAt.slice(0, 7);
+    const dateKey = movement.occurredAt.slice(0, 10);
 
-    if (!seenMonths.has(monthKey)) {
-      const monthMovements = movementsByMonth.get(monthKey) ?? [];
-      const isExpanded = expandedMonths.has(monthKey);
+    if (!seenDates.has(dateKey)) {
+      const dayMovements = movementsByDate.get(dateKey) ?? [];
+      const isExpanded = expandedMonths.has(dateKey);
       const visibleCount =
-        visibleMovementCountsByMonth[monthKey] ?? MOVEMENTS_PER_MONTH_PAGE;
-      seenMonths.add(monthKey);
+        visibleMovementCountsByMonth[dateKey] ?? MOVEMENTS_PER_MONTH_PAGE;
+      seenDates.add(dateKey);
       rows.push({
-        count: monthMovements.length,
-        id: `month_${monthKey}`,
+        count: dayMovements.length,
+        id: `day_${dateKey}`,
         isExpanded,
-        label: formatMovementMonth(movement.occurredAt),
-        monthKey,
+        label: formatMovementGroupDate(movement.occurredAt, todayKey),
+        monthKey: dateKey,
         type: "month",
       });
 
       if (isExpanded) {
-        monthMovements.slice(0, visibleCount).forEach((monthMovement) => {
+        dayMovements.slice(0, visibleCount).forEach((monthMovement) => {
           rows.push({
             id: `${monthMovement.type}_${monthMovement.id}`,
             movement: monthMovement,
@@ -614,11 +637,11 @@ function groupMovementsByMonth(
           });
         });
 
-        if (monthMovements.length > visibleCount) {
+        if (dayMovements.length > visibleCount) {
           rows.push({
-            hiddenCount: monthMovements.length - visibleCount,
-            id: `load_more_${monthKey}`,
-            monthKey,
+            hiddenCount: dayMovements.length - visibleCount,
+            id: `load_more_${dateKey}`,
+            monthKey: dateKey,
             type: "loadMore",
           });
         }
@@ -712,11 +735,11 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   const [showAmountError, setShowAmountError] = useState(false);
   const [showRecurrenceError, setShowRecurrenceError] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(true);
-  const [showBalanceFilters, setShowBalanceFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showBalanceFilters, setShowBalanceFilters] = useState(false);
   const [expandedMovementMonths, setExpandedMovementMonths] = useState<
     Set<string>
-  >(() => new Set([today.slice(0, 7)]));
+  >(() => new Set([today]));
   const [visibleMovementCountsByMonth, setVisibleMovementCountsByMonth] =
     useState<Record<string, number>>({});
   const [balanceChartMode, setBalanceChartMode] =
@@ -861,18 +884,22 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     [movementSummaryMonth, movementSummaryRange, visibleMovements],
   );
   const movementSummary = useMemo(
-    () => ({
-      expense: summarizedMovements.filter(
-        (movement) => movement.type === "expense",
-      ).length,
-      income: summarizedMovements.filter(
-        (movement) => movement.type === "income",
-      ).length,
-      total: summarizedMovements.length,
-      transfer: summarizedMovements.filter(
-        (movement) => movement.type === "transfer",
-      ).length,
-    }),
+    () =>
+      summarizedMovements.reduce(
+        (summary, movement) => {
+          if (movement.type === "income") {
+            summary.income += movement.amount;
+          } else if (movement.type === "expense") {
+            summary.expense += movement.amount;
+          } else {
+            summary.transfer += movement.amount;
+          }
+
+          summary.total += 1;
+          return summary;
+        },
+        { expense: 0, income: 0, total: 0, transfer: 0 },
+      ),
     [summarizedMovements],
   );
   const movementRows = useMemo(
@@ -881,8 +908,9 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         visibleMovements,
         expandedMovementMonths,
         visibleMovementCountsByMonth,
+        today,
       ),
-    [expandedMovementMonths, visibleMovementCountsByMonth, visibleMovements],
+    [expandedMovementMonths, today, visibleMovementCountsByMonth, visibleMovements],
   );
   const typeOptions = useMemo(
     () => [
@@ -1378,7 +1406,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       return (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Cargar mas movimientos de este mes`}
+          accessibilityLabel="Ver mas movimientos"
           onPress={() => loadMoreMovementsForMonth(item.monthKey)}
           style={({ pressed }) => [
             styles.loadMoreRow,
@@ -1390,14 +1418,20 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
             size={18}
             color={colors.text}
           />
-          <Text style={styles.loadMoreText}>Cargar mas</Text>
+          <Text style={styles.loadMoreText}>Ver mas movimientos</Text>
         </Pressable>
       );
     }
 
     const { movement } = item;
-    const categoryLabel =
-      movement.type === "transfer" ? null : movement.categoryName;
+    const movementTitle =
+      movement.type === "transfer"
+        ? "Movimiento entre cuentas"
+        : (movement.categoryName ?? getMovementLabel(movement.type));
+    const movementSubtitle =
+      movement.type === "transfer" && movement.toAccountName
+        ? `${movement.accountName} -> ${movement.toAccountName}`
+        : movement.accountName;
 
     return (
       <Surface style={styles.movementRow} elevation={0}>
@@ -1413,7 +1447,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
           <View style={styles.movementCopy}>
             <View style={styles.movementDateLine}>
               <Text numberOfLines={1} style={styles.movementDateLabel}>
-                {formatMovementTitleDate(movement.occurredAt)}
+                {movementTitle}
               </Text>
               {isActiveRecurringMovement(movement) ? (
                 <MaterialCommunityIcons
@@ -1424,67 +1458,20 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
               ) : null}
             </View>
             <View style={styles.movementMetaLine}>
-              {movement.type === "transfer" && movement.toAccountName ? (
-                <>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.movementMeta,
-                      styles.movementTransferAccountText,
-                    ]}
-                  >
-                    {movement.accountName}
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="arrow-right"
-                    size={14}
-                    color={colors.mutedText}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.movementMeta,
-                      styles.movementTransferAccountText,
-                    ]}
-                  >
-                    {movement.toAccountName}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.movementMeta,
-                      styles.movementTransferAccountText,
-                    ]}
-                  >
-                    {movement.accountName}
-                  </Text>
-                  {categoryLabel ? (
-                    <>
-                      <MaterialCommunityIcons
-                        name={
-                          movement.type === "income"
-                            ? "arrow-up-circle-outline"
-                            : "arrow-down-circle-outline"
-                        }
-                        size={14}
-                        color={colors.mutedText}
-                      />
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.movementMeta,
-                          styles.movementTransferAccountText,
-                        ]}
-                      >
-                        {categoryLabel}
-                      </Text>
-                    </>
-                  ) : null}
-                </>
-              )}
+              <MaterialCommunityIcons
+                name={
+                  movement.type === "income"
+                    ? "arrow-up-circle-outline"
+                    : movement.type === "expense"
+                      ? "arrow-down-circle-outline"
+                      : "swap-horizontal-circle-outline"
+                }
+                size={14}
+                color={colors.mutedText}
+              />
+              <Text numberOfLines={1} style={styles.movementMeta}>
+                {movementSubtitle}
+              </Text>
             </View>
           </View>
           <Text
@@ -1512,7 +1499,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
           }
         >
           <Menu.Item
-            leadingIcon="eye-outline"
+            leadingIcon="information-outline"
             title="Ver"
             onPress={() => {
               setActionMenuMovementId(null);
@@ -1549,14 +1536,14 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
           onValueChange={(value) => setSelectedSection(value as FinancialSection)}
           buttons={[
             {
-              accessibilityLabel: "Balance",
-              icon: "scale-balance",
+              accessibilityLabel: "Mi dinero",
+              icon: "wallet-outline",
               label: "",
               value: "balance",
             },
             {
               accessibilityLabel: "Movimientos",
-              icon: "format-list-bulleted",
+              icon: "swap-vertical",
               label: "",
               value: "movements",
             },
@@ -1566,8 +1553,18 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       ) : null}
 
       <AppScreenHeader
-        eyebrow={activeSection === "balance" ? "BALANCE" : "MOVIMIENTOS"}
-        title={activeSection === "balance" ? "Balance" : "Movimientos"}
+        eyebrow={activeSection === "balance" ? "MI DINERO" : "MOVIMIENTOS"}
+        helpTitle={
+          activeSection === "balance"
+            ? "Para que sirve Mi dinero?"
+            : "Para que sirven los movimientos?"
+        }
+        helpMessage={
+          activeSection === "balance"
+            ? "Mi dinero junta los saldos de tus cuentas para mostrar cuanto tienes en esta libreta y en que bolsillos esta guardado."
+            : "Movimientos es el rastro de huellas de tu dinero. Aqui Meowney registra ingresos, gastos y transferencias para que sepas que paso, cuando paso y en que cuenta."
+        }
+        title={activeSection === "balance" ? "Mi dinero" : "Movimientos"}
       />
     </View>
   );
@@ -1597,47 +1594,57 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       </Pressable>
       <AppAnimatedDisclosure
         visible={showBalanceFilters}
-        maxHeight={144}
-        style={styles.filterGrid}
+        maxHeight={220}
+        style={styles.movementFilterGroups}
       >
-        <View style={styles.filterControl}>
-          <View style={styles.filterDateControl}>
-            <Tooltip title="Fecha">
-              <IconButton
-                accessibilityLabel={`Seleccionar fecha. Fecha actual ${formatAppDate(selectedDate)}`}
-                icon="calendar-month-outline"
-                iconColor={colors.text}
-                size={20}
-                style={styles.filterDateButton}
-                onPress={() => setIsBalanceDatePickerOpen(true)}
-              />
-            </Tooltip>
-            <Tooltip title="Hoy">
-              <IconButton
-                accessibilityLabel="Usar fecha de hoy"
-                icon="calendar-today"
-                iconColor={colors.text}
-                size={20}
-                style={styles.filterDateButton}
-                onPress={() => updateSelectedDate(today)}
-              />
-            </Tooltip>
+        <View style={styles.movementFilterGroup}>
+          <Text style={styles.movementFilterGroupLabel}>Fecha</Text>
+          <View style={styles.filterGrid}>
+            <View style={styles.filterControl}>
+              <View style={styles.filterDateControl}>
+                <Tooltip title="Fecha">
+                  <IconButton
+                    accessibilityLabel={`Seleccionar fecha. Fecha actual ${formatAppDate(selectedDate)}`}
+                    icon="calendar-month-outline"
+                    iconColor={colors.text}
+                    size={20}
+                    style={styles.filterDateButton}
+                    onPress={() => setIsBalanceDatePickerOpen(true)}
+                  />
+                </Tooltip>
+                <Tooltip title="Hoy">
+                  <IconButton
+                    accessibilityLabel="Usar fecha de hoy"
+                    icon="calendar-today"
+                    iconColor={colors.text}
+                    size={20}
+                    style={styles.filterDateButton}
+                    onPress={() => updateSelectedDate(today)}
+                  />
+                </Tooltip>
+              </View>
+            </View>
           </View>
         </View>
-        <FilterMenu
-          colors={colors}
-          icon="wallet-outline"
-          label="CUENTA"
-          selectedLabel={selectedBalanceAccountLabel}
-          selectedValues={balanceAccountFilters}
-          styles={styles}
-          options={accountOptions}
-          onChange={setBalanceAccountFilters}
-        />
+        <View style={styles.movementFilterGroup}>
+          <Text style={styles.movementFilterGroupLabel}>Cuenta</Text>
+          <View style={styles.filterGrid}>
+            <FilterMenu
+              colors={colors}
+              icon="wallet-outline"
+              label="CUENTA"
+              selectedLabel={selectedBalanceAccountLabel}
+              selectedValues={balanceAccountFilters}
+              styles={styles}
+              options={accountOptions}
+              onChange={setBalanceAccountFilters}
+            />
+          </View>
+        </View>
       </AppAnimatedDisclosure>
       <View style={styles.filterContextSpacer} />
       <Text numberOfLines={1} style={styles.filterContextText}>
-        Corte: {formatAppDate(selectedDate)}
+        Corte: {formatAppDate(selectedDate)} · {selectedBalanceAccountLabel}
       </Text>
     </View>
   );
@@ -1646,10 +1653,10 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     <View style={styles.scrollContentWrap}>
       <View style={styles.balanceSection}>
         <View style={styles.balanceSectionHeader}>
-          <Text style={styles.balanceSectionTitle}>Balance general</Text>
+          <Text style={styles.balanceSectionTitle}>Dinero total</Text>
         </View>
         <AppReadOnlyRow
-          icon="scale-balance"
+          icon="wallet-outline"
           iconBackgroundColor={colors.selected}
           iconColor={colors.text}
           subtitle={formatAccountCount(visibleBalances.length)}
@@ -1719,47 +1726,55 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       </Pressable>
       <AppAnimatedDisclosure
         visible={showFilters}
-        maxHeight={192}
-        style={styles.filterGrid}
+        maxHeight={260}
+        style={styles.movementFilterGroups}
       >
-        <PeriodFilterMenu
-          colors={colors}
-          options={movementPeriodOptions}
-          selectedLabel={selectedMovementPeriodLabel}
-          selectedValue={movementPeriod}
-          styles={styles}
-          onChange={selectMovementPeriod}
-        />
-        <FilterMenu
-          colors={colors}
-          icon="swap-vertical"
-          label="TIPO"
-          selectedLabel={selectedTypeLabel}
-          selectedValues={typeFilters}
-          styles={styles}
-          options={typeOptions}
-          onChange={(values) => setTypeFilters(values as MovementType[])}
-        />
-        <FilterMenu
-          colors={colors}
-          icon="wallet-outline"
-          label="CUENTA"
-          selectedLabel={selectedAccountLabel}
-          selectedValues={accountFilters}
-          styles={styles}
-          options={accountOptions}
-          onChange={setAccountFilters}
-        />
-        <FilterMenu
-          colors={colors}
-          icon="shape-outline"
-          label="CATEGORIA"
-          selectedLabel={selectedCategoryLabel}
-          selectedValues={categoryFilters}
-          styles={styles}
-          options={categoryOptions}
-          onChange={setCategoryFilters}
-        />
+        <View style={styles.movementFilterGroup}>
+          <Text style={styles.movementFilterGroupLabel}>Periodo</Text>
+          <PeriodFilterMenu
+            colors={colors}
+            options={movementPeriodOptions}
+            selectedLabel={selectedMovementPeriodLabel}
+            selectedValue={movementPeriod}
+            styles={styles}
+            onChange={selectMovementPeriod}
+          />
+        </View>
+        <View style={styles.movementFilterGroup}>
+          <Text style={styles.movementFilterGroupLabel}>Mostrar</Text>
+          <View style={styles.filterGrid}>
+            <FilterMenu
+              colors={colors}
+              icon="swap-vertical"
+              label="TIPO"
+              selectedLabel={selectedTypeLabel}
+              selectedValues={typeFilters}
+              styles={styles}
+              options={typeOptions}
+              onChange={(values) => setTypeFilters(values as MovementType[])}
+            />
+            <FilterMenu
+              colors={colors}
+              icon="wallet-outline"
+              label="CUENTA"
+              selectedLabel={selectedAccountLabel}
+              selectedValues={accountFilters}
+              styles={styles}
+              options={accountOptions}
+              onChange={setAccountFilters}
+            />
+            <FilterMenu
+              colors={colors}
+              icon="tag-outline"
+              label="CATEGORIA"
+              selectedLabel={selectedCategoryLabel}
+              selectedValues={categoryFilters}
+              styles={styles}
+              options={categoryOptions}
+              onChange={setCategoryFilters}
+            />
+          </View>
+        </View>
       </AppAnimatedDisclosure>
       <View style={styles.filterContextSpacer} />
       <Text numberOfLines={1} style={styles.filterContextText}>
@@ -1772,6 +1787,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     <View style={styles.movementsContentWrap}>
       <MovementSummaryCard
         colors={colors}
+        currency={data.currency}
         isPreviousDisabled={movementSummaryMonth <= earliestMovementSummaryMonth}
         isNextDisabled={movementSummaryMonth >= latestMovementSummaryMonth}
         monthKey={movementSummaryMonth}
@@ -1781,15 +1797,6 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         onAll={showAllMovementSummary}
         onNext={showNextMovementSummaryMonth}
         onPrevious={showPreviousMovementSummaryMonth}
-      />
-      <MovementChartCarousel
-        colors={colors}
-        currency={data.currency}
-        mode={movementChartMode}
-        movements={visibleMovements}
-        styles={styles}
-        onNext={cycleMovementChart}
-        onPrevious={cycleMovementChart}
       />
     </View>
   );
@@ -1803,7 +1810,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
   if (!selectedNotebookId) {
     return (
-      <SafeAreaView edges={["left", "right", "bottom"]} style={styles.safeArea}>
+      <SafeAreaView edges={["left", "right"]} style={styles.safeArea}>
         <View style={styles.container}>
           <AppEmptyState
             icon="book-alert-outline"
@@ -1817,7 +1824,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   }
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} style={styles.safeArea}>
+    <SafeAreaView edges={["left", "right"]} style={styles.safeArea}>
       <View style={styles.container}>
         {fixedHeader}
         <FlatList
@@ -1839,7 +1846,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
               <AppEmptyState
                 icon="paw-outline"
                 title="Sin rastros todavia"
-                message="Ajusta los filtros o registra movimientos nuevos para que Meowney tenga algo que seguir."
+                message="Aqui apareceran tus ingresos, gastos y movimientos entre cuentas. Registra el primero para que Meowney empiece a seguir el rastro de esta libreta."
                 style={styles.emptyPanel}
               />
             )
@@ -1847,28 +1854,28 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
           showsVerticalScrollIndicator={false}
         />
         {activeSection === "movements" ? (
-          <AppDraggableFab style={styles.fabWrap}>
+          <View style={styles.bottomAction}>
             {isCreateMenuMounted ? (
-              <Animated.View style={createMenuAnimatedStyle}>
+              <Animated.View style={[styles.fabMenuWrap, createMenuAnimatedStyle]}>
                 <Surface style={styles.fabMenu} elevation={0}>
                   <FabOption
                     colors={colors}
                     icon="arrow-up-circle-outline"
-                    label="Ingreso"
+                  label="Registrar ingreso"
                     styles={styles}
                     onPress={() => openCreateForm("income")}
                   />
                   <FabOption
                     colors={colors}
                     icon="arrow-down-circle-outline"
-                    label="Gasto"
+                  label="Registrar gasto"
                     styles={styles}
                     onPress={() => openCreateForm("expense")}
                   />
                   <FabOption
                     colors={colors}
                     icon="swap-horizontal-circle-outline"
-                    label="Transferencia"
+                  label="Mover entre cuentas"
                     styles={styles}
                     onPress={() => openCreateForm("transfer")}
                   />
@@ -1879,11 +1886,13 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
               accessibilityLabel={
                 createMenuOpen
                   ? "Cerrar opciones de movimiento"
-                  : "Nuevo movimiento"
+                  : "Registrar movimiento"
               }
+              label="Registrar movimiento"
+              style={styles.addButton}
               onPress={createMenuOpen ? closeCreateMenu : openCreateMenu}
             />
-          </AppDraggableFab>
+          </View>
         ) : null}
       </View>
       <Portal>
@@ -1973,7 +1982,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         <AppContentDialog
           visible={Boolean(infoMovement)}
           title="Detalle"
-          titleIcon="eye-outline"
+          titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
           onAction={() => setInfoMovement(null)}
@@ -2202,10 +2211,10 @@ function MovementFormDialog({
               ? "Editar ingreso"
               : "Editar gasto"
           : isTransfer
-            ? "Nueva transferencia"
+            ? "Mover entre cuentas"
             : mode === "income"
-              ? "Nuevo ingreso"
-              : "Nuevo gasto"
+              ? "Registrar ingreso"
+              : "Registrar gasto"
       }
       contentContainerStyle={styles.form}
       scrollRef={formScrollRef}
@@ -2223,7 +2232,7 @@ function MovementFormDialog({
         <Text style={styles.pickerLabel}>MONTO</Text>
         <TextInput
           mode="outlined"
-          placeholder="Ej. 250.00"
+          placeholder="Ej. 250"
           keyboardType="decimal-pad"
           value={values.amount}
           onChangeText={(amount) => onChange({ ...values, amount })}
@@ -2231,7 +2240,7 @@ function MovementFormDialog({
         />
         {showAmountError ? (
           <HelperText type="error" visible>
-            Ingresa un monto mayor a cero.
+            Escribe un monto mayor a cero.
           </HelperText>
         ) : null}
       </View>
@@ -2336,15 +2345,15 @@ function MovementFormDialog({
       {showAccountError ? (
         <HelperText type="error" visible>
           {isTransfer
-            ? "Selecciona dos cuentas diferentes."
-            : "Selecciona cuenta y categoria."}
+            ? "Elige una cuenta de origen y otra de destino."
+            : "Elige la cuenta y la categoria del movimiento."}
         </HelperText>
       ) : null}
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>DESCRIPCION</Text>
         <AppDescriptionInput
-          placeholder="Ej. Supermercado"
+          placeholder={isTransfer ? "Ej. Pase dinero a ahorros" : "Ej. Supermercado, nomina o gasolina"}
           value={values.description}
           scrollRef={formScrollRef}
           onChangeText={(description) => onChange({ ...values, description })}
@@ -2758,6 +2767,7 @@ type MovementSummary = {
 
 type MovementSummaryCardProps = {
   colors: MeowneyColors;
+  currency: string;
   isPreviousDisabled: boolean;
   isNextDisabled: boolean;
   monthKey: string;
@@ -2771,6 +2781,7 @@ type MovementSummaryCardProps = {
 
 function MovementSummaryCard({
   colors,
+  currency,
   isPreviousDisabled,
   isNextDisabled,
   monthKey,
@@ -2829,20 +2840,23 @@ function MovementSummaryCard({
           <MovementSummaryStat
             colors={colors}
             icon="arrow-up-circle-outline"
+            label="Entró"
             styles={styles}
-            value={summary.income}
+            value={formatAmount(summary.income, currency)}
           />
           <MovementSummaryStat
             colors={colors}
             icon="arrow-down-circle-outline"
+            label="Salió"
             styles={styles}
-            value={summary.expense}
+            value={formatAmount(summary.expense, currency)}
           />
           <MovementSummaryStat
             colors={colors}
             icon="swap-horizontal-circle-outline"
+            label="Traspaso"
             styles={styles}
-            value={summary.transfer}
+            value={formatAmount(summary.transfer, currency)}
           />
         </View>
       </Surface>
@@ -2853,20 +2867,25 @@ function MovementSummaryCard({
 type MovementSummaryStatProps = {
   colors: MeowneyColors;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
   styles: ReturnType<typeof createStyles>;
-  value: number;
+  value: string;
 };
 
 function MovementSummaryStat({
   colors,
   icon,
+  label,
   styles,
   value,
 }: MovementSummaryStatProps) {
   return (
     <View style={styles.movementSummaryStat}>
       <MaterialCommunityIcons name={icon} size={20} color={colors.mutedText} />
-      <Text style={styles.movementSummaryStatValue}>{value}</Text>
+      <View style={styles.movementSummaryStatCopy}>
+        <Text numberOfLines={1} style={styles.movementSummaryStatLabel}>{label}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.movementSummaryStatValue}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -3777,7 +3796,7 @@ function createStyles(colors: MeowneyColors) {
     listContent: {
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: 96,
+      paddingBottom: spacing.lg,
     },
     scrollContentWrap: {
       gap: spacing.lg,
@@ -3880,23 +3899,32 @@ function createStyles(colors: MeowneyColors) {
     movementSummaryStat: {
       flex: 1,
       minWidth: 0,
-      minHeight: 48,
-      flexDirection: "row",
-      alignItems: "center",
+      minHeight: 68,
+      alignItems: "flex-start",
       justifyContent: "center",
-      gap: spacing.sm,
+      gap: spacing.xs,
       padding: spacing.sm,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.input,
       backgroundColor: colors.selected,
     },
+    movementSummaryStatCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    movementSummaryStatLabel: {
+      color: colors.mutedText,
+      fontSize: 10,
+      fontWeight: typography.mediumWeight,
+      lineHeight: 14,
+      textTransform: "uppercase",
+    },
     movementSummaryStatValue: {
       color: colors.text,
-      fontSize: typography.subheadingSize,
+      fontSize: typography.bodySmallSize,
       fontWeight: typography.mediumWeight,
-      lineHeight: 24,
-      textAlign: "center",
+      lineHeight: 18,
     },
     accountBalanceGrid: {
       gap: spacing.sm,
@@ -4128,6 +4156,22 @@ function createStyles(colors: MeowneyColors) {
       alignItems: "center",
       gap: spacing.sm,
     },
+    movementFilterGroups: {
+      width: "100%",
+      gap: spacing.md,
+    },
+    movementFilterGroup: {
+      gap: spacing.sm,
+    },
+    movementFilterGroupLabel: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      lineHeight: 16,
+      paddingHorizontal: spacing.xs,
+      textTransform: "uppercase",
+    },
     filterControl: {
       flexShrink: 0,
     },
@@ -4255,16 +4299,31 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.bodySize,
       fontWeight: typography.bodyWeight,
     },
-    fabWrap: {
-      position: "absolute",
-      right: spacing.lg,
-      bottom: 88,
-      alignItems: "flex-end",
+    bottomAction: {
+      position: "relative",
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
       gap: spacing.sm,
+      zIndex: 2,
+    },
+    addButton: {
+      width: "70%",
+    },
+    fabMenuWrap: {
+      position: "absolute",
+      bottom: 80,
+      width: "70%",
+      alignSelf: "center",
+      alignItems: "stretch",
+      zIndex: 3,
     },
     fabMenu: {
       overflow: "hidden",
-      minWidth: 188,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,

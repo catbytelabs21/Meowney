@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { PanResponder, Pressable, ScrollView, StyleSheet, Text as NativeText, View, type DimensionValue } from 'react-native';
-import { IconButton, TextInput } from 'react-native-paper';
+import { Checkbox, IconButton, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
@@ -166,19 +166,20 @@ export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }
           const selected = normalizedSelectedColor === normalizedColor;
 
           return (
-            <Pressable
-              key={normalizedColor}
-              accessibilityRole="button"
-              accessibilityLabel={`Color ${normalizedColor}`}
-              onPress={() => onSelect(normalizedColor)}
-              style={[
-                styles.colorChoice,
-                { backgroundColor: normalizedColor, borderColor: selected ? colors.text : colors.border },
-                selected && styles.colorChoiceSelected,
-              ]}
-            >
-              {selected ? <MaterialCommunityIcons name="check" size={18} color={getReadableSwatchIconColor(normalizedColor, colors)} /> : null}
-            </Pressable>
+            <View key={normalizedColor} style={styles.colorChoiceCell}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Color ${normalizedColor}`}
+                onPress={() => onSelect(normalizedColor)}
+                style={[
+                  styles.colorChoice,
+                  { backgroundColor: normalizedColor, borderColor: selected ? colors.text : colors.border },
+                  selected && styles.colorChoiceSelected,
+                ]}
+              >
+                {selected ? <MaterialCommunityIcons name="check" size={18} color={getReadableSwatchIconColor(normalizedColor, colors)} /> : null}
+              </Pressable>
+            </View>
           );
         })}
       </View>
@@ -408,11 +409,7 @@ function getReadableSwatchIconColor(color: string | null, colors: MeowneyColors)
 
 export function AppOptionToggle({
   checked,
-  checkedIcon = 'check-circle-outline',
   checkedLabel,
-  leadingCheckedIcon = 'star',
-  leadingUncheckedIcon = 'star-outline',
-  uncheckedIcon = 'circle-outline',
   uncheckedLabel,
   onToggle,
 }: AppOptionToggleProps) {
@@ -426,26 +423,17 @@ export function AppOptionToggle({
       onPress={onToggle}
       style={({ pressed }) => [
         styles.optionToggle,
-        { borderColor: colors.border, backgroundColor: colors.background },
-        checked && { borderColor: colors.pressed, backgroundColor: colors.selected },
         pressed && { backgroundColor: colors.pressed },
       ]}
     >
-      <View style={styles.optionToggleIcon}>
-        <MaterialCommunityIcons
-          name={checked ? leadingCheckedIcon : leadingUncheckedIcon}
-          size={20}
-          color={checked ? colors.warning : colors.mutedText}
-        />
-      </View>
+      <Checkbox.Android
+        status={checked ? 'checked' : 'unchecked'}
+        color={colors.primary}
+        uncheckedColor={colors.mutedText}
+      />
       <NativeText numberOfLines={1} style={[styles.optionToggleText, { color: colors.text }]}>
         {checked ? checkedLabel : uncheckedLabel}
       </NativeText>
-      <MaterialCommunityIcons
-        name={checked ? checkedIcon : uncheckedIcon}
-        size={20}
-        color={checked ? colors.success : colors.mutedText}
-      />
     </Pressable>
   );
 }
@@ -532,12 +520,17 @@ const styles = StyleSheet.create({
   swatchTray: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
     alignItems: 'center',
-    justifyContent: 'space-between',
     borderWidth: 1,
     borderRadius: radii.card,
-    padding: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  colorChoiceCell: {
+    width: '20%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs,
   },
   colorChoice: {
     width: 40,
@@ -624,23 +617,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.42)',
   },
   optionToggle: {
-    minHeight: 48,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderRadius: radii.button,
-    paddingHorizontal: spacing.md,
-  },
-  optionToggleIcon: {
-    width: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.xs,
+    borderRadius: radii.input,
+    paddingRight: spacing.sm,
   },
   optionToggleText: {
     flex: 1,
+    minWidth: 0,
     fontSize: typography.bodySize,
-    fontWeight: typography.bodyWeight,
+    fontWeight: typography.mediumWeight,
+    lineHeight: 22,
   },
   readOnlyRow: {
     minHeight: 68,

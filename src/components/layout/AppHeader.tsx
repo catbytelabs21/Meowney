@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -24,11 +23,9 @@ export function AppHeader({ left, right = <AppSettingsButton />, title }: AppHea
       <View style={styles.bar}>
         <View style={styles.side}>{left}</View>
         <View style={styles.center}>
-          <MaterialCommunityIcons name="cat" size={16} color={colors.mutedText} />
           <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>
             {title}
           </Text>
-          <MaterialCommunityIcons name="cat" size={16} color={colors.mutedText} />
         </View>
         <View style={styles.side}>{right}</View>
       </View>
@@ -58,7 +55,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
   },
   title: {

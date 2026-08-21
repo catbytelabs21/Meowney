@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,15 +7,19 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { IconButton, Portal, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
+import { AppContentDialog } from '@/components/ui/AppFormDialog';
 import { darkColors, lightColors } from '@/theme/colors';
+import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 
 type AppScreenHeaderProps = {
   eyebrow: string;
+  helpMessage?: string;
+  helpTitle?: string;
   subtitle?: string;
   title: string;
   style?: StyleProp<ViewStyle>;
@@ -28,67 +32,52 @@ type AppScreenProps = AppScreenHeaderProps & {
   scroll?: boolean;
 };
 
-type MeowneyMarkerIcon = keyof typeof MaterialCommunityIcons.glyphMap;
-
-function getMeowneyMarkerIcon(eyebrow: string): MeowneyMarkerIcon {
-  const normalizedEyebrow = eyebrow.toUpperCase();
-
-  if (normalizedEyebrow.includes('LIBRETA')) {
-    return 'notebook-outline';
-  }
-
-  if (normalizedEyebrow.includes('BALANCE')) {
-    return 'scale-balance';
-  }
-
-  if (normalizedEyebrow.includes('CUENTA')) {
-    return 'wallet-outline';
-  }
-
-  if (normalizedEyebrow.includes('CATEGORIA')) {
-    return 'tag-outline';
-  }
-
-  if (normalizedEyebrow.includes('MOVIMIENTO')) {
-    return 'format-list-bulleted';
-  }
-
-  if (normalizedEyebrow.includes('PRESUPUESTO')) {
-    return 'chart-donut';
-  }
-
-  if (normalizedEyebrow.includes('SUSCRIPCION')) {
-    return 'calendar-sync-outline';
-  }
-
-  if (normalizedEyebrow.includes('AHORRO')) {
-    return 'treasure-chest-outline';
-  }
-
-  if (normalizedEyebrow.includes('MAS')) {
-    return 'dots-horizontal-circle-outline';
-  }
-
-  return 'view-dashboard-outline';
-}
-
 export function AppScreenHeader({
   eyebrow,
+  helpMessage,
+  helpTitle,
   style,
   withBottomGap = false,
 }: AppScreenHeaderProps) {
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const titleColor = colorScheme === 'light' ? colors.text : colors.pure;
-  const markerIcon = getMeowneyMarkerIcon(eyebrow);
+  const hasHelp = Boolean(helpMessage);
 
   return (
-    <View style={[styles.header, withBottomGap ? styles.headerBottomGap : null, style]}>
-      <View style={styles.eyebrowRow}>
-        <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
-        <MaterialCommunityIcons name={markerIcon} size={18} color={colors.mutedText} />
+    <>
+      <View style={[styles.header, withBottomGap ? styles.headerBottomGap : null, style]}>
+        <View style={styles.eyebrowRow}>
+          <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
+          {hasHelp ? (
+            <IconButton
+              accessibilityLabel={`Ayuda de ${eyebrow}`}
+              icon="help-circle-outline"
+              iconColor={colors.mutedText}
+              size={22}
+              style={styles.helpButton}
+              onPress={() => setIsHelpOpen(true)}
+            />
+          ) : null}
+        </View>
       </View>
-    </View>
+      {hasHelp ? (
+        <Portal>
+          <AppContentDialog
+            visible={isHelpOpen}
+            title={helpTitle ?? `Que es ${eyebrow.toLowerCase()}?`}
+            titleIcon="help-circle-outline"
+            titleIconColor={colors.text}
+            contentContainerStyle={styles.helpDialogContent}
+            onAction={() => setIsHelpOpen(false)}
+            onDismiss={() => setIsHelpOpen(false)}
+          >
+            <Text style={[styles.helpDialogText, { color: colors.mutedText }]}>{helpMessage}</Text>
+          </AppContentDialog>
+        </Portal>
+      ) : null}
+    </>
   );
 }
 
@@ -96,6 +85,8 @@ export function AppScreen({
   children,
   contentContainerStyle,
   eyebrow,
+  helpMessage,
+  helpTitle,
   scroll = false,
   subtitle,
   title,
@@ -105,7 +96,13 @@ export function AppScreen({
 
   const content = (
     <>
-      <AppScreenHeader eyebrow={eyebrow} subtitle={subtitle} title={title} />
+      <AppScreenHeader
+        eyebrow={eyebrow}
+        helpMessage={helpMessage}
+        helpTitle={helpTitle}
+        subtitle={subtitle}
+        title={title}
+      />
       {children}
     </>
   );
@@ -150,7 +147,23 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  helpButton: {
+    width: 40,
+    height: 40,
+    margin: 0,
+    borderRadius: radii.navItem,
+  },
+  helpDialogContent: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  helpDialogText: {
+    fontSize: typography.bodySize,
+    lineHeight: 24,
+    textAlign: 'justify',
   },
   headerBottomGap: {
     marginBottom: spacing.lg,
