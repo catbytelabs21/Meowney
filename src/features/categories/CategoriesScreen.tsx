@@ -16,6 +16,7 @@ import {
   Surface,
   Text,
   TextInput,
+  Tooltip,
 } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -23,6 +24,7 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
 import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
+import { AppBottomActionDrawer } from '@/components/ui/AppBottomActionDrawer';
 import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
@@ -48,6 +50,11 @@ import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import {
+  getCategoryAndChildIds,
+  getCategoryDisplayName,
+  getPrimaryCategories,
+} from '@/utils/categoryHierarchy';
 import { formatAppDateTime } from '@/utils/dateFormat';
 import type { Category, CategoryType } from './types';
 
@@ -55,7 +62,13 @@ type CategoryFormValues = {
   color: string;
   icon: CategoryIconName;
   name: string;
+  parentId: string | null;
   type: CategoryType;
+};
+
+type CategoryFilterOption = {
+  label: string;
+  value: string;
 };
 
 function getInitialForm(colors: MeowneyColors): CategoryFormValues {
@@ -63,6 +76,7 @@ function getInitialForm(colors: MeowneyColors): CategoryFormValues {
     color: colors.cyanSignal,
     icon: 'dots-horizontal-circle-outline',
     name: '',
+    parentId: null,
     type: 'expense',
   };
 }
@@ -74,6 +88,7 @@ function getFormFromCategory(category: Category, colors: MeowneyColors): Categor
     color: category.color ?? fallback.color,
     icon: (category.icon as CategoryIconName | null) ?? fallback.icon,
     name: category.name,
+    parentId: category.parentId,
     type: category.type,
   };
 }
@@ -85,7 +100,7 @@ function toInput(notebookId: string, values: CategoryFormValues): CategoryInput 
     type: values.type,
     icon: values.icon,
     color: values.color,
-    parentId: null,
+    parentId: values.parentId,
   };
 }
 
@@ -95,6 +110,18 @@ function formatDate(value: string) {
 
 function formatCategoryType(type: CategoryType) {
   return CATEGORY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Gasto';
+}
+
+function summarizeCategorySelection(selectedValues: string[], options: CategoryFilterOption[]) {
+  if (selectedValues.length === 0) {
+    return 'Todas';
+  }
+
+  if (selectedValues.length === 1) {
+    return options.find((option) => option.value === selectedValues[0])?.label ?? 'Todas';
+  }
+
+  return `${selectedValues.length} seleccionadas`;
 }
 
 export function CategoriesScreen() {
@@ -142,29 +169,64 @@ export function CategoriesScreen() {
   const [formValues, setFormValues] = useState(() => getInitialForm(colors));
   const [showNameError, setShowNameError] = useState(false);
   const [typeFilter, setTypeFilter] = useState<CategoryTypeFilter>('all');
+  const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<CategorySort>('nameAsc');
   const [showFilters, setShowFilters] = useState(false);
   const [actionMenuCategoryId, setActionMenuCategoryId] = useState<string | null>(null);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const visibleCategories = useMemo(() => {
-    const filteredCategories =
+    const typeFilteredCategories =
       typeFilter === 'all' ? categories : categories.filter((category) => category.type === typeFilter);
+    const categoryFilterIds = new Set(
+      categoryFilters.flatMap((categoryId) =>
+        Array.from(getCategoryAndChildIds(categories, categoryId)),
+      ),
+    );
+    const filteredCategories =
+      categoryFilters.length === 0
+        ? typeFilteredCategories
+        : typeFilteredCategories.filter((category) => categoryFilterIds.has(category.id));
 
     return [...filteredCategories].sort((first, second) => {
       if (sortOrder === 'updatedDesc') {
         return new Date(second.updatedAt).getTime() - new Date(first.updatedAt).getTime();
       }
 
-      const comparison = first.name.localeCompare(second.name, 'es', { sensitivity: 'base' });
+      const comparison = getCategoryDisplayName(categories, first).localeCompare(
+        getCategoryDisplayName(categories, second),
+        'es',
+        { sensitivity: 'base' },
+      );
       return sortOrder === 'nameAsc' ? comparison : -comparison;
     });
-  }, [categories, sortOrder, typeFilter]);
+  }, [categories, categoryFilters, sortOrder, typeFilter]);
   const selectedTypeFilterLabel =
     CATEGORY_TYPE_FILTER_OPTIONS.find((option) => option.value === typeFilter)?.label ?? 'Todos';
   const selectedSortLabel = CATEGORY_SORT_OPTIONS.find((option) => option.value === sortOrder)?.label ?? 'Nombre A-Z';
-  const toggleFilters = () => {
+  const categoryFilterOptions = useMemo(
+    () =>
+      getPrimaryCategories(categories, typeFilter === 'all' ? undefined : typeFilter).map((category) => ({
+        label: getCategoryDisplayName(categories, category),
+        value: category.id,
+      })),
+    [categories, typeFilter],
+  );
+  const selectedCategoryFilterLabel = summarizeCategorySelection(
+    categoryFilters,
+    categoryFilterOptions,
+  );
+  const categoryById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  );
+  const toggleFilters = useCallback(() => {
     setShowFilters((current) => !current);
-  };
+  }, []);
+  const clearFilters = useCallback(() => {
+    setTypeFilter('all');
+    setCategoryFilters([]);
+    setSortOrder('nameAsc');
+  }, []);
 
   useEffect(() => {
     if (routeNotebookId && routeNotebookId !== selectedNotebookId) {
@@ -224,9 +286,31 @@ export function CategoriesScreen() {
     reloadCategories();
   };
 
-  const renderCategory = ({ item }: { item: Category }) => {
+  const keyExtractor = useCallback((item: Category) => item.id, []);
+  const renderSeparator = useCallback(() => <View style={styles.separator} />, [styles.separator]);
+  const renderEmptyComponent = useCallback(
+    () =>
+      isLoading ? (
+        <AppLoadingState colors={colors} label="Cargando categorias" />
+      ) : (
+        <AppEmptyState
+          icon="tag-plus-outline"
+          title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay etiquetas'}
+          message={
+            loadError
+              ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
+              : 'Aqui apareceran las etiquetas para ordenar tu dinero. Crea categorias como comida, casa, sueldo o transporte para entender en que se mueve cada peso.'
+          }
+          style={styles.emptyState}
+        />
+      ),
+    [colors, isLoading, loadError, styles.emptyState],
+  );
+
+  const renderCategory = useCallback(({ item }: { item: Category }) => {
     const iconName = (item.icon as CategoryIconName | null) ?? 'dots-horizontal-circle-outline';
     const color = item.color ?? colors.cyanSignal;
+    const parentCategory = item.parentId ? categoryById.get(item.parentId) : null;
 
     return (
       <Surface style={styles.categoryRow} elevation={0}>
@@ -244,7 +328,7 @@ export function CategoriesScreen() {
               {item.name}
             </Text>
             <Text numberOfLines={1} style={styles.categoryMeta}>
-              {formatCategoryType(item.type)}
+              {parentCategory ? `Subcategoria de ${parentCategory.name}` : formatCategoryType(item.type)}
             </Text>
           </View>
         </Pressable>
@@ -291,7 +375,15 @@ export function CategoriesScreen() {
         </AppActionMenu>
       </Surface>
     );
-  };
+  }, [
+    actionMenuCategoryId,
+    categoryById,
+    colors.cyanSignal,
+    colors.mutedText,
+    colors.void,
+    setInfoCategory,
+    styles,
+  ]);
 
   return (
     <View style={styles.safeArea}>
@@ -326,20 +418,41 @@ export function CategoriesScreen() {
         ) : (
           <>
             <View style={styles.filterSection}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
-                onPress={toggleFilters}
-                style={({ pressed }) => [styles.filterToggle, pressed && styles.filterTogglePressed]}
-              >
-                <Text style={styles.filterToggleText}>Filtros</Text>
-                <View style={styles.filterToggleSpacer} />
-                <View style={styles.chevronButton}>
+              <View style={styles.filterToggle}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
+                  onPress={toggleFilters}
+                  style={({ pressed }) => [styles.filterToggleMain, pressed && styles.filterTogglePressed]}
+                >
+                  <Text style={styles.filterToggleText}>Filtros</Text>
+                  <View style={styles.filterToggleSpacer} />
+                </Pressable>
+                <IconButton
+                  accessibilityLabel="Borrar filtros"
+                  icon="filter-remove-outline"
+                  iconColor={colors.mutedText}
+                  size={18}
+                  style={styles.clearFilterButton}
+                  onPress={clearFilters}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
+                  onPress={toggleFilters}
+                  style={({ pressed }) => [styles.chevronButton, pressed && styles.filterTogglePressed]}
+                >
                   <MaterialCommunityIcons name={showFilters ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedText} />
-                </View>
-              </Pressable>
+                </Pressable>
+              </View>
 
-              <AppAnimatedDisclosure visible={showFilters} maxHeight={180} style={styles.filterGroups}>
+              <AppAnimatedDisclosure
+                mode="overlay"
+                visible={showFilters}
+                maxHeight={320}
+                style={styles.filterGroups}
+                overlayContentStyle={styles.filterPanel}
+              >
                 <View style={styles.filterGroup}>
                   <Text style={styles.filterGroupLabel}>Tipo</Text>
                   <View style={styles.filterGrid}>
@@ -356,6 +469,19 @@ export function CategoriesScreen() {
                         onSelect={setTypeFilter}
                       />
                     </View>
+                  </View>
+                </View>
+                <View style={styles.filterGroup}>
+                  <Text style={styles.filterGroupLabel}>Categoria</Text>
+                  <View style={styles.filterGrid}>
+                    <CategoryFilterMenu
+                      colors={colors}
+                      options={categoryFilterOptions}
+                      selectedLabel={selectedCategoryFilterLabel}
+                      selectedValues={categoryFilters}
+                      styles={styles}
+                      onChange={setCategoryFilters}
+                    />
                   </View>
                 </View>
                 <View style={styles.filterGroup}>
@@ -376,46 +502,31 @@ export function CategoriesScreen() {
                     </View>
                   </View>
                 </View>
+                <View style={styles.filterContextSpacer} />
+                <Text numberOfLines={1} style={styles.filterContextText}>
+                  Vista: {selectedTypeFilterLabel} - Categoria: {selectedCategoryFilterLabel} - {selectedSortLabel}
+                </Text>
               </AppAnimatedDisclosure>
-              <View style={styles.filterContextSpacer} />
-              <Text numberOfLines={1} style={styles.filterContextText}>
-                Vista: {selectedTypeFilterLabel} · {selectedSortLabel}
-              </Text>
             </View>
 
             <FlatList
               style={styles.list}
               data={isLoading ? [] : visibleCategories}
-              keyExtractor={(item) => item.id}
+              keyExtractor={keyExtractor}
               renderItem={renderCategory}
               contentContainerStyle={!isLoading && visibleCategories.length ? styles.listContent : styles.emptyContent}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              ListEmptyComponent={
-                isLoading ? (
-                  <AppLoadingState colors={colors} label="Cargando categorias" />
-                ) : (
-                  <AppEmptyState
-                    icon="tag-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay etiquetas'}
-                    message={
-                      loadError
-                        ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Aqui apareceran las etiquetas para ordenar tu dinero. Crea categorias como comida, casa, sueldo o transporte para entender en que se mueve cada peso.'
-                    }
-                    style={styles.emptyState}
-                  />
-                )
-              }
+              ItemSeparatorComponent={renderSeparator}
+              ListEmptyComponent={renderEmptyComponent}
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.bottomAction}>
+            <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
                 accessibilityLabel="Agregar categoria"
                 label="Agregar categoria"
                 style={styles.addButton}
                 onPress={openCreate}
               />
-            </View>
+            </AppBottomActionDrawer>
           </>
         )}
       </AppScreen>
@@ -434,6 +545,14 @@ export function CategoriesScreen() {
             <>
               <AppInfoLine label="Titulo" value={infoCategory.name} />
               <AppInfoLine label="Tipo" value={formatCategoryType(infoCategory.type)} />
+              <AppInfoLine
+                label="Padre"
+                value={
+                  infoCategory.parentId
+                    ? categories.find((category) => category.id === infoCategory.parentId)?.name ?? 'Sin padre'
+                    : 'Sin padre'
+                }
+              />
               <AppInfoLine label="Creacion" value={formatDate(infoCategory.createdAt)} />
               <AppInfoLine label="Actualizacion" value={formatDate(infoCategory.updatedAt)} />
             </>
@@ -441,6 +560,8 @@ export function CategoriesScreen() {
         </AppContentDialog>
 
         <CategoryFormDialog
+          categories={categories}
+          editingCategoryId={editingCategory?.id ?? null}
           styles={styles}
           visible={isCreateOpen || Boolean(editingCategory)}
           title={editingCategory ? 'Editar categoria' : 'Agregar categoria'}
@@ -469,8 +590,72 @@ export function CategoriesScreen() {
   );
 }
 
+type CategoryFilterMenuProps = {
+  colors: MeowneyColors;
+  options: CategoryFilterOption[];
+  selectedLabel: string;
+  selectedValues: string[];
+  styles: ReturnType<typeof createStyles>;
+  onChange: (values: string[]) => void;
+};
+
+function CategoryFilterMenu({
+  colors,
+  options,
+  selectedLabel,
+  selectedValues,
+  styles,
+  onChange,
+}: CategoryFilterMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <View style={styles.filterControl}>
+      <Menu
+        visible={isOpen}
+        onDismiss={() => setIsOpen(false)}
+        contentStyle={styles.typeMenuContent}
+        anchor={
+          <Tooltip title="Categoria">
+            <IconButton
+              accessibilityLabel={`Categoria. ${selectedLabel}`}
+              icon="shape-outline"
+              iconColor={colors.text}
+              size={20}
+              onPress={() => setIsOpen(true)}
+              style={styles.filterIconButton}
+            />
+          </Tooltip>
+        }
+      >
+        <Menu.Item
+          leadingIcon={selectedValues.length === 0 ? 'check' : undefined}
+          title="Todas"
+          onPress={() => onChange([])}
+        />
+        {options.map((option) => (
+          <Menu.Item
+            key={option.value}
+            leadingIcon={selectedValues.includes(option.value) ? 'check' : undefined}
+            title={option.label}
+            onPress={() => {
+              onChange(
+                selectedValues.includes(option.value)
+                  ? selectedValues.filter((value) => value !== option.value)
+                  : [...selectedValues, option.value],
+              );
+            }}
+          />
+        ))}
+      </Menu>
+    </View>
+  );
+}
+
 type CategoryFormDialogProps = {
+  categories: Category[];
   colorOptions: string[];
+  editingCategoryId: string | null;
   showNameError: boolean;
   styles: ReturnType<typeof createStyles>;
   title: string;
@@ -482,7 +667,9 @@ type CategoryFormDialogProps = {
 };
 
 function CategoryFormDialog({
+  categories,
   colorOptions,
+  editingCategoryId,
   showNameError,
   styles,
   title,
@@ -493,6 +680,10 @@ function CategoryFormDialog({
   onSave,
 }: CategoryFormDialogProps) {
   const selectedTypeLabel = formatCategoryType(values.type);
+  const parentOptions = getPrimaryCategories(categories, values.type).filter(
+    (category) => category.id !== editingCategoryId,
+  );
+  const selectedParent = parentOptions.find((category) => category.id === values.parentId);
 
   return (
     <AppFormDialog
@@ -529,7 +720,28 @@ function CategoryFormDialog({
                 buttonStyle={styles.typeSelect}
                 buttonContentStyle={styles.typeSelectContent}
                 menuContentStyle={styles.typeMenuContent}
-                onSelect={(type) => onChange({ ...values, type })}
+                onSelect={(type) => onChange({ ...values, type, parentId: null })}
+              />
+            </View>
+
+            <View style={styles.pickerGroup}>
+              <Text style={styles.pickerLabel}>SUBCATEGORIA DE</Text>
+              <AppSelectMenu
+                icon="chevron-down"
+                label="Subcategoria de"
+                options={[
+                  { label: 'Ninguna', value: '' },
+                  ...parentOptions.map((category) => ({
+                    label: getCategoryDisplayName(categories, category),
+                    value: category.id,
+                  })),
+                ]}
+                selectedLabel={selectedParent?.name ?? 'Ninguna'}
+                selectedValue={values.parentId ?? ''}
+                buttonStyle={styles.typeSelect}
+                buttonContentStyle={styles.typeSelectContent}
+                menuContentStyle={styles.typeMenuContent}
+                onSelect={(parentId) => onChange({ ...values, parentId: parentId || null })}
               />
             </View>
 
@@ -563,7 +775,14 @@ function createStyles(colors: MeowneyColors) {
     },
     filterSection: {
       alignItems: 'stretch',
+      marginHorizontal: -spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.md,
       gap: 2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      position: 'relative',
+      zIndex: 6,
     },
     filterToggle: {
       minHeight: 36,
@@ -572,7 +791,31 @@ function createStyles(colors: MeowneyColors) {
       gap: spacing.md,
       paddingBottom: spacing.xs,
       paddingHorizontal: spacing.xs,
+    },
+    filterToggleMain: {
+      minHeight: 30,
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
       borderRadius: radii.button,
+      paddingHorizontal: 0,
+    },
+    clearFilterButton: {
+      width: 30,
+      height: 30,
+      margin: 0,
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
+    },
+    chevronButton: {
+      width: 30,
+      height: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
     },
     filterTogglePressed: {
       backgroundColor: colors.selected,
@@ -585,16 +828,6 @@ function createStyles(colors: MeowneyColors) {
     },
     filterToggleSpacer: {
       flex: 1,
-    },
-    chevronButton: {
-      width: 30,
-      height: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.button,
-      backgroundColor: colors.selected,
     },
     filterContextSpacer: {
       height: spacing.sm,
@@ -615,8 +848,21 @@ function createStyles(colors: MeowneyColors) {
       gap: spacing.sm,
     },
     filterGroups: {
+      position: 'absolute',
+      top: 38,
+      left: 0,
+      right: 0,
+      width: '100%',
+      zIndex: 7,
+    },
+    filterPanel: {
       width: '100%',
       gap: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.md,
     },
     filterGroup: {
       gap: spacing.sm,
@@ -647,11 +893,9 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     categoryRow: {
       minHeight: 68,
@@ -734,13 +978,9 @@ function createStyles(colors: MeowneyColors) {
     },
     bottomAction: {
       alignItems: 'center',
+      alignSelf: 'stretch',
       marginHorizontal: -spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      marginTop: -spacing.lg,
     },
     addButton: {
       width: '70%',

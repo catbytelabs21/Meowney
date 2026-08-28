@@ -7,10 +7,11 @@ export const createSubscriptionTable: Migration = {
     CREATE TABLE IF NOT EXISTS subscription (
       id TEXT PRIMARY KEY NOT NULL,
       notebook_id TEXT NOT NULL,
+      category_id TEXT NOT NULL,
       name TEXT NOT NULL,
       amount INTEGER NOT NULL,
       payment_frequency TEXT NOT NULL CHECK (
-        payment_frequency IN ('weekly', 'monthly', 'quarterly', 'semiannual', 'annual')
+        payment_frequency IN ('weekly', 'monthly', 'bimonthly', 'quarterly', 'semiannual', 'annual')
       ),
       notes TEXT NULL,
       icon TEXT NULL,
@@ -18,10 +19,12 @@ export const createSubscriptionTable: Migration = {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       archived_at TEXT NULL,
-      FOREIGN KEY (notebook_id) REFERENCES notebook (id)
+      FOREIGN KEY (notebook_id) REFERENCES notebook (id),
+      FOREIGN KEY (category_id) REFERENCES category (id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_subscription_notebook_id ON subscription (notebook_id);
+    CREATE INDEX IF NOT EXISTS idx_subscription_category_id ON subscription (category_id);
     CREATE INDEX IF NOT EXISTS idx_subscription_payment_frequency ON subscription (payment_frequency);
     CREATE INDEX IF NOT EXISTS idx_subscription_updated_at ON subscription (updated_at);
   `,

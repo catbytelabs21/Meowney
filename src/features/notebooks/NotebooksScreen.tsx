@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { AppScreenHeader } from "@/components/layout/AppScreen";
+import { AppBottomActionDrawer } from "@/components/ui/AppBottomActionDrawer";
 import { AppCatFab } from "@/components/ui/AppCatFab";
 import { AppEmptyState } from "@/components/ui/AppEmptyState";
 import {
@@ -43,6 +44,7 @@ import {
   getNotebookColorOptions,
   type NotebookIconName,
 } from "@/constants/notebooks";
+import { accountRepository } from "@/database/repositories/account.repository";
 import { categoryRepository } from "@/database/repositories/category.repository";
 import {
   notebookRepository,
@@ -58,6 +60,8 @@ import { formatAppDateTime } from "@/utils/dateFormat";
 import type { Notebook } from "./types";
 
 type NotebookFormValues = {
+  createDefaultAccount: boolean;
+  createDefaultCategories: boolean;
   name: string;
   description: string;
   icon: NotebookIconName;
@@ -68,6 +72,8 @@ type NotebookFormValues = {
 
 function getInitialForm(colors: MeowneyColors): NotebookFormValues {
   return {
+    createDefaultAccount: true,
+    createDefaultCategories: true,
     name: "",
     description: "",
     icon: "notebook-outline",
@@ -85,6 +91,8 @@ function getFormFromNotebook(
 
   return {
     name: notebook.name,
+    createDefaultAccount: false,
+    createDefaultCategories: false,
     description: notebook.description ?? "",
     icon: (notebook.icon as NotebookIconName | null) ?? fallback.icon,
     color: notebook.color ?? fallback.color,
@@ -106,6 +114,14 @@ function toInput(values: NotebookFormValues): NotebookInput {
 function formatDate(value: string) {
   return formatAppDateTime(value);
 }
+
+const starterAccount = {
+  name: "Cartera",
+  description: "Efectivo disponible.",
+  type: "CASH" as const,
+  icon: "wallet-outline",
+  color: "#7DD8A8",
+};
 
 export function NotebooksScreen() {
   const { openDefaultNotebook } = useLocalSearchParams<{
@@ -238,7 +254,15 @@ export function NotebooksScreen() {
     } else {
       const createdNotebook = notebookRepository.create(toInput(formValues));
       savedNotebookId = createdNotebook.id;
-      categoryRepository.seedDefaultCategories(createdNotebook.id);
+      if (formValues.createDefaultCategories) {
+        categoryRepository.seedDefaultCategories(createdNotebook.id);
+      }
+      if (formValues.createDefaultAccount) {
+        accountRepository.create({
+          notebookId: createdNotebook.id,
+          ...starterAccount,
+        });
+      }
       setSnackbarMessage("Nueva guarida lista para que Meowney la vigile.");
     }
 
@@ -412,14 +436,14 @@ export function NotebooksScreen() {
             }
             showsVerticalScrollIndicator={false}
           />
-          <View style={styles.bottomAction}>
+          <AppBottomActionDrawer style={styles.bottomAction}>
             <AppCatFab
               accessibilityLabel="Agregar libreta"
               label="Agregar libreta"
               style={styles.addNotebookButton}
               onPress={openCreate}
             />
-          </View>
+          </AppBottomActionDrawer>
         </View>
       </SafeAreaView>
 
@@ -472,6 +496,7 @@ export function NotebooksScreen() {
 
         <NotebookFormDialog
           colors={colors}
+          isEditing={Boolean(editingNotebook)}
           styles={styles}
           visible={isCreateOpen || Boolean(editingNotebook)}
           title={editingNotebook ? "Editar libreta" : "Nueva libreta"}
@@ -502,6 +527,7 @@ export function NotebooksScreen() {
 
 type NotebookFormDialogProps = {
   colors: MeowneyColors;
+  isEditing: boolean;
   styles: ReturnType<typeof createStyles>;
   visible: boolean;
   title: string;
@@ -515,6 +541,7 @@ type NotebookFormDialogProps = {
 
 function NotebookFormDialog({
   colors,
+  isEditing,
   styles,
   visible,
   title,
@@ -614,6 +641,40 @@ function NotebookFormDialog({
           onToggle={() => onChange({ ...values, isDefault: !values.isDefault })}
         />
       </View>
+
+      {!isEditing ? (
+        <>
+          <View style={styles.pickerGroup}>
+            <Text style={styles.pickerLabel}>CUENTA DEFAULT</Text>
+            <AppOptionToggle
+              checked={values.createDefaultAccount}
+              checkedLabel="Crear Cartera"
+              uncheckedLabel="No crear Cartera"
+              onToggle={() =>
+                onChange({
+                  ...values,
+                  createDefaultAccount: !values.createDefaultAccount,
+                })
+              }
+            />
+          </View>
+
+          <View style={styles.pickerGroup}>
+            <Text style={styles.pickerLabel}>CATEGORIAS DEFAULT</Text>
+            <AppOptionToggle
+              checked={values.createDefaultCategories}
+              checkedLabel="Crear categorias"
+              uncheckedLabel="No crear categorias"
+              onToggle={() =>
+                onChange({
+                  ...values,
+                  createDefaultCategories: !values.createDefaultCategories,
+                })
+              }
+            />
+          </View>
+        </>
+      ) : null}
     </AppFormDialog>
   );
 }
@@ -639,13 +700,11 @@ function createStyles(colors: MeowneyColors) {
       flexGrow: 1,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
       paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
     },
     headerWrap: {
       marginBottom: spacing.lg,
@@ -748,12 +807,7 @@ function createStyles(colors: MeowneyColors) {
     },
     bottomAction: {
       alignItems: "center",
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      alignSelf: "stretch",
     },
     addNotebookButton: {
       width: "70%",

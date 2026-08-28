@@ -49,6 +49,7 @@ export default function TabsLayout() {
         }
       />
       <Tabs
+        backBehavior="initialRoute"
         initialRouteName="more"
         screenOptions={{
           animation: 'shift',

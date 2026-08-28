@@ -27,6 +27,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { AppAnimatedDisclosure } from "@/components/ui/AppAnimatedDisclosure";
+import { AppBottomActionDrawer } from "@/components/ui/AppBottomActionDrawer";
 import { AppCatFab } from "@/components/ui/AppCatFab";
 import { AppEmptyState } from "@/components/ui/AppEmptyState";
 import {
@@ -67,6 +68,14 @@ import { motion } from "@/theme/motion";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import {
+  getCategoryAndChildIds,
+  getCategoryDisplayName,
+  getPrimaryCategories,
+  getSelectedParentCategory,
+  getSelectedSubcategory,
+  getSubcategories,
+} from "@/utils/categoryHierarchy";
 import { formatAppDate } from "@/utils/dateFormat";
 import type { Account } from "@/features/accounts/types";
 import type { AccountBalance } from "@/features/balance/types";
@@ -514,7 +523,14 @@ function filterMovements(
   typeFilters: MovementType[],
   accountFilters: string[],
   categoryFilters: string[],
+  categories: Category[],
 ) {
+  const categoryFilterIds = new Set(
+    categoryFilters.flatMap((categoryId) =>
+      Array.from(getCategoryAndChildIds(categories, categoryId)),
+    ),
+  );
+
   return movements.filter((movement) => {
     const matchesType =
       typeFilters.length === 0 || typeFilters.includes(movement.type);
@@ -527,7 +543,7 @@ function filterMovements(
     const matchesCategory =
       categoryFilters.length === 0 ||
       (movement.categoryId
-        ? categoryFilters.includes(movement.categoryId)
+        ? categoryFilterIds.has(movement.categoryId)
         : false);
     return matchesType && matchesAccount && matchesCategory;
   });
@@ -552,7 +568,10 @@ function getMovementPeriodRange(
   }
 
   if (period === "currentMonth") {
-    return { end: getMonthEndDateKeyFromDateKey(today), start: getMonthStartDateKey(today) };
+    return {
+      end: getMonthEndDateKeyFromDateKey(today),
+      start: getMonthStartDateKey(today),
+    };
   }
 
   if (period === "previousMonth") {
@@ -564,7 +583,10 @@ function getMovementPeriodRange(
   }
 
   if (period === "currentYear") {
-    return { end: `${today.slice(0, 4)}-12-31`, start: `${today.slice(0, 4)}-01-01` };
+    return {
+      end: `${today.slice(0, 4)}-12-31`,
+      start: `${today.slice(0, 4)}-01-01`,
+    };
   }
 
   return customStart <= customEnd
@@ -681,13 +703,15 @@ function getMovementIcon(
 function isActiveRecurringMovement(movement: MovementItem | null) {
   return Boolean(
     movement &&
-      movement.type !== "transfer" &&
-      movement.transactionGroupId &&
-      !movement.transactionGroupDetachedAt,
+    movement.type !== "transfer" &&
+    movement.transactionGroupId &&
+    !movement.transactionGroupDetachedAt,
   );
 }
 
-export function FinancialSectionScreen({ section }: FinancialSectionScreenProps) {
+export function FinancialSectionScreen({
+  section,
+}: FinancialSectionScreenProps) {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === "light" ? lightColors : darkColors;
@@ -698,7 +722,9 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   const [selectedDate, setSelectedDate] = useState(today);
   const [movementPeriod, setMovementPeriod] =
     useState<MovementPeriod>("currentMonth");
-  const [customPeriodStart, setCustomPeriodStart] = useState(addDays(today, -29));
+  const [customPeriodStart, setCustomPeriodStart] = useState(
+    addDays(today, -29),
+  );
   const [customPeriodEnd, setCustomPeriodEnd] = useState(today);
   const [customPeriodPickerTarget, setCustomPeriodPickerTarget] =
     useState<CustomPeriodPickerTarget | null>(null);
@@ -711,21 +737,21 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   const [isCreateMenuMounted, setIsCreateMenuMounted] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [createMode, setCreateMode] = useState<MovementType>("expense");
-  const [editingMovement, setEditingMovement] =
-    useState<MovementItem | null>(null);
+  const [editingMovement, setEditingMovement] = useState<MovementItem | null>(
+    null,
+  );
   const [formValues, setFormValues] = useState<MovementFormValues>(() =>
     getInitialForm([], [], "expense", today),
   );
-  const [infoMovement, setInfoMovement] = useState<MovementItem | null>(
-    null,
-  );
+  const [infoMovement, setInfoMovement] = useState<MovementItem | null>(null);
   const [isBalanceDatePickerOpen, setIsBalanceDatePickerOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isRecurrenceEndDatePickerOpen, setIsRecurrenceEndDatePickerOpen] =
     useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [deleteMovement, setDeleteMovement] =
-    useState<MovementItem | null>(null);
+  const [deleteMovement, setDeleteMovement] = useState<MovementItem | null>(
+    null,
+  );
   const [pendingRecurringScope, setPendingRecurringScope] =
     useState<PendingRecurringScope | null>(null);
   const [actionMenuMovementId, setActionMenuMovementId] = useState<
@@ -797,7 +823,8 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     currency: "MXN",
     movements: [],
   });
-  const [hasLoadedFinancialDataOnce, sethasLoadedFinancialDataOnce] = useState(false);
+  const [hasLoadedFinancialDataOnce, sethasLoadedFinancialDataOnce] =
+    useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -837,34 +864,33 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       visibleBalances.reduce((total, account) => total + account.balance, 0),
     [visibleBalances],
   );
-  const visibleMovements = useMemo(
-    () => {
-      const filteredMovements = filterMovements(
-          data.movements,
-          typeFilters,
-          accountFilters,
-          categoryFilters,
-        );
-
-      return filterMovementsByPeriod(
-        filteredMovements,
-        movementPeriod,
-        today,
-        customPeriodStart,
-        customPeriodEnd,
-      );
-    },
-    [
+  const visibleMovements = useMemo(() => {
+    const filteredMovements = filterMovements(
+      data.movements,
+      typeFilters,
       accountFilters,
       categoryFilters,
-      customPeriodEnd,
-      customPeriodStart,
-      data.movements,
+      data.categoriesRaw,
+    );
+
+    return filterMovementsByPeriod(
+      filteredMovements,
       movementPeriod,
       today,
-      typeFilters,
-    ],
-  );
+      customPeriodStart,
+      customPeriodEnd,
+    );
+  }, [
+    accountFilters,
+    categoryFilters,
+    customPeriodEnd,
+    customPeriodStart,
+    data.categoriesRaw,
+    data.movements,
+    movementPeriod,
+    today,
+    typeFilters,
+  ]);
   const earliestMovementSummaryMonth = useMemo(
     () => getEarliestMovementMonth(visibleMovements, today.slice(0, 7)),
     [visibleMovements],
@@ -910,7 +936,12 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         visibleMovementCountsByMonth,
         today,
       ),
-    [expandedMovementMonths, today, visibleMovementCountsByMonth, visibleMovements],
+    [
+      expandedMovementMonths,
+      today,
+      visibleMovementCountsByMonth,
+      visibleMovements,
+    ],
   );
   const typeOptions = useMemo(
     () => [
@@ -943,11 +974,11 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   );
   const categoryOptions = useMemo(
     () =>
-      data.categories.map((category) => ({
-        label: category.name,
+      data.categoriesRaw.map((category) => ({
+        label: getCategoryDisplayName(data.categoriesRaw, category),
         value: category.id,
       })),
-    [data.categories],
+    [data.categoriesRaw],
   );
   const selectedTypeLabel = summarizeSelection(
     typeFilters,
@@ -957,7 +988,8 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
   const selectedMovementPeriodLabel =
     movementPeriod === "custom"
       ? `${formatAppDate(customPeriodStart)} - ${formatAppDate(customPeriodEnd)}`
-      : (movementPeriodOptions.find((option) => option.value === movementPeriod)?.label ?? "Todo");
+      : (movementPeriodOptions.find((option) => option.value === movementPeriod)
+          ?.label ?? "Todo");
   const selectedAccountLabel = summarizeSelection(
     accountFilters,
     "Todas las cuentas",
@@ -998,9 +1030,29 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       },
     ],
   };
-  const updateSelectedDate = (dateKey: string) => {
+  const updateSelectedDate = useCallback((dateKey: string) => {
     setSelectedDate(dateKey);
-  };
+  }, []);
+  const toggleBalanceFilters = useCallback(() => {
+    setShowBalanceFilters((current) => !current);
+  }, []);
+  const clearBalanceFilters = useCallback(() => {
+    setSelectedDate(today);
+    setBalanceAccountFilters([]);
+  }, [today]);
+  const toggleMovementFilters = useCallback(() => {
+    setShowFilters((current) => !current);
+  }, []);
+  const clearMovementFilters = useCallback(() => {
+    setMovementPeriod("currentMonth");
+    setCustomPeriodStart(addDays(today, -29));
+    setCustomPeriodEnd(today);
+    setTypeFilters([]);
+    setAccountFilters([]);
+    setCategoryFilters([]);
+    setMovementSummaryRange("month");
+    setMovementSummaryMonth(today.slice(0, 7));
+  }, [today]);
 
   const openCreateMenu = () => {
     setIsCreateMenuMounted(true);
@@ -1249,7 +1301,10 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     if (scope === "single") {
       transactionRepository.archiveAndDetach(movement.id);
     } else {
-      transactionRepository.archiveRecurringFuture(groupId, movement.occurredAt);
+      transactionRepository.archiveRecurringFuture(
+        groupId,
+        movement.occurredAt,
+      );
     }
 
     setPendingRecurringScope(null);
@@ -1279,7 +1334,7 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     reload();
   };
 
-  const toggleMovementMonth = (monthKey: string) => {
+  const toggleMovementMonth = useCallback((monthKey: string) => {
     setExpandedMovementMonths((current) => {
       const next = new Set(current);
 
@@ -1291,24 +1346,24 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
       return next;
     });
-  };
+  }, []);
 
-  const loadMoreMovementsForMonth = (monthKey: string) => {
+  const loadMoreMovementsForMonth = useCallback((monthKey: string) => {
     setVisibleMovementCountsByMonth((current) => ({
       ...current,
       [monthKey]:
         (current[monthKey] ?? MOVEMENTS_PER_MONTH_PAGE) +
         MOVEMENTS_PER_MONTH_PAGE,
     }));
-  };
+  }, []);
 
-  const cycleBalanceChart = () => {
+  const cycleBalanceChart = useCallback(() => {
     setBalanceChartMode((current) =>
       current === "distribution" ? "trend" : "distribution",
     );
-  };
+  }, []);
 
-  const cycleMovementChart = () => {
+  const cycleMovementChart = useCallback(() => {
     const modes: MovementChartMode[] = [
       "cashflow",
       "incomeCategories",
@@ -1321,27 +1376,31 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
       return modes[(currentIndex + 1) % modes.length];
     });
-  };
+  }, []);
 
-  const showAllMovementSummary = () => {
+  const showAllMovementSummary = useCallback(() => {
     setMovementSummaryRange("all");
-  };
+  }, []);
 
-  const showPreviousMovementSummaryMonth = () => {
+  const showPreviousMovementSummaryMonth = useCallback(() => {
     setMovementSummaryRange("month");
     setMovementSummaryMonth((current) =>
-      current > earliestMovementSummaryMonth ? shiftMonthKey(current, -1) : current,
+      current > earliestMovementSummaryMonth
+        ? shiftMonthKey(current, -1)
+        : current,
     );
-  };
+  }, [earliestMovementSummaryMonth]);
 
-  const showNextMovementSummaryMonth = () => {
+  const showNextMovementSummaryMonth = useCallback(() => {
     setMovementSummaryRange("month");
     setMovementSummaryMonth((current) =>
-      current < latestMovementSummaryMonth ? shiftMonthKey(current, 1) : current,
+      current < latestMovementSummaryMonth
+        ? shiftMonthKey(current, 1)
+        : current,
     );
-  };
+  }, [latestMovementSummaryMonth]);
 
-  const selectMovementPeriod = (period: MovementPeriod) => {
+  const selectMovementPeriod = useCallback((period: MovementPeriod) => {
     setMovementPeriod(period);
 
     if (period === "currentMonth") {
@@ -1354,7 +1413,12 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
       setMovementSummaryMonth(shiftMonthKey(today.slice(0, 7), -1));
     }
 
-    if (period === "last7" || period === "last30" || period === "last90" || period === "currentYear") {
+    if (
+      period === "last7" ||
+      period === "last30" ||
+      period === "last90" ||
+      period === "currentYear"
+    ) {
       setMovementSummaryRange("all");
     }
 
@@ -1365,9 +1429,38 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
     if (period === "custom") {
       setCustomPeriodPickerTarget("start");
     }
-  };
+  }, [today]);
 
-  const renderMovementRow = ({
+  const movementKeyExtractor = useCallback((item: MovementListRow) => item.id, []);
+  const renderMovementSeparator = useCallback(
+    () => <View style={styles.separator} />,
+    [styles.separator],
+  );
+  const renderMovementEmptyComponent = useCallback(
+    () =>
+      activeSection === "balance" ? null : isLoading &&
+        !hasLoadedFinancialDataOnce ? (
+        <Surface style={styles.emptyPanel} elevation={0}>
+          <AppLoadingState colors={colors} label="Cargando historial" />
+        </Surface>
+      ) : (
+        <AppEmptyState
+          icon="paw-outline"
+          title="Sin rastros todavia"
+          message="Aqui apareceran tus ingresos, gastos y movimientos entre cuentas. Registra el primero para que Meowney empiece a seguir el rastro de esta libreta."
+          style={styles.emptyPanel}
+        />
+      ),
+    [
+      activeSection,
+      colors,
+      hasLoadedFinancialDataOnce,
+      isLoading,
+      styles.emptyPanel,
+    ],
+  );
+
+  const renderMovementRow = useCallback(({
     item,
     index,
   }: {
@@ -1526,14 +1619,24 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         </Menu>
       </Surface>
     );
-  };
+  }, [
+    actionMenuMovementId,
+    colors,
+    data.currency,
+    loadMoreMovementsForMonth,
+    openEditForm,
+    styles,
+    toggleMovementMonth,
+  ]);
 
   const sectionHeader = (
     <View style={styles.sectionHeaderContent}>
       {showSectionPicker ? (
         <SegmentedButtons
           value={activeSection}
-          onValueChange={(value) => setSelectedSection(value as FinancialSection)}
+          onValueChange={(value) =>
+            setSelectedSection(value as FinancialSection)
+          }
           buttons={[
             {
               accessibilityLabel: "Mi dinero",
@@ -1571,31 +1674,53 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
 
   const balanceFilters = (
     <View style={styles.filterSection}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={
-          showBalanceFilters ? "Ocultar filtros" : "Mostrar filtros"
-        }
-        onPress={() => setShowBalanceFilters((current) => !current)}
-        style={({ pressed }) => [
-          styles.filterToggle,
-          pressed ? styles.filterTogglePressed : null,
-        ]}
-      >
-        <Text style={styles.filterToggleText}>Filtros</Text>
-        <View style={styles.filterToggleSpacer} />
-        <View style={styles.chevronButton}>
+      <View style={styles.filterToggle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            showBalanceFilters ? "Ocultar filtros" : "Mostrar filtros"
+          }
+          onPress={toggleBalanceFilters}
+          style={({ pressed }) => [
+            styles.filterToggleMain,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
+          <Text style={styles.filterToggleText}>Filtros</Text>
+          <View style={styles.filterToggleSpacer} />
+        </Pressable>
+        <IconButton
+          accessibilityLabel="Borrar filtros"
+          icon="filter-remove-outline"
+          iconColor={colors.mutedText}
+          size={18}
+          style={styles.clearFilterButton}
+          onPress={clearBalanceFilters}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            showBalanceFilters ? "Ocultar filtros" : "Mostrar filtros"
+          }
+          onPress={toggleBalanceFilters}
+          style={({ pressed }) => [
+            styles.chevronButton,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
           <MaterialCommunityIcons
             name={showBalanceFilters ? "chevron-up" : "chevron-down"}
             size={18}
             color={colors.mutedText}
           />
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
       <AppAnimatedDisclosure
+        mode="overlay"
         visible={showBalanceFilters}
-        maxHeight={220}
+        maxHeight={270}
         style={styles.movementFilterGroups}
+        overlayContentStyle={styles.movementFilterPanel}
       >
         <View style={styles.movementFilterGroup}>
           <Text style={styles.movementFilterGroupLabel}>Fecha</Text>
@@ -1641,15 +1766,15 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
             />
           </View>
         </View>
+        <View style={styles.filterContextSpacer} />
+        <Text numberOfLines={1} style={styles.filterContextText}>
+          Corte: {formatAppDate(selectedDate)} · {selectedBalanceAccountLabel}
+        </Text>
       </AppAnimatedDisclosure>
-      <View style={styles.filterContextSpacer} />
-      <Text numberOfLines={1} style={styles.filterContextText}>
-        Corte: {formatAppDate(selectedDate)} · {selectedBalanceAccountLabel}
-      </Text>
     </View>
   );
 
-  const balanceContent = (
+  const balanceContent = useMemo(() => (
     <View style={styles.scrollContentWrap}>
       <View style={styles.balanceSection}>
         <View style={styles.balanceSectionHeader}>
@@ -1701,33 +1826,63 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         </View>
       </View>
     </View>
-  );
+  ), [
+    balanceChartMode,
+    cycleBalanceChart,
+    data.balanceTrend,
+    data.currency,
+    totalBalance,
+    visibleBalances,
+    balanceAccountFilters,
+    colors,
+    styles,
+  ]);
 
   const movementsFilters = (
     <View style={styles.filterSection}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-        onPress={() => setShowFilters((current) => !current)}
-        style={({ pressed }) => [
-          styles.filterToggle,
-          pressed ? styles.filterTogglePressed : null,
-        ]}
-      >
-        <Text style={styles.filterToggleText}>Filtros</Text>
-        <View style={styles.filterToggleSpacer} />
-        <View style={styles.chevronButton}>
+      <View style={styles.filterToggle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+          onPress={toggleMovementFilters}
+          style={({ pressed }) => [
+            styles.filterToggleMain,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
+          <Text style={styles.filterToggleText}>Filtros</Text>
+          <View style={styles.filterToggleSpacer} />
+        </Pressable>
+        <IconButton
+          accessibilityLabel="Borrar filtros"
+          icon="filter-remove-outline"
+          iconColor={colors.mutedText}
+          size={18}
+          style={styles.clearFilterButton}
+          onPress={clearMovementFilters}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+          onPress={toggleMovementFilters}
+          style={({ pressed }) => [
+            styles.chevronButton,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
           <MaterialCommunityIcons
             name={showFilters ? "chevron-up" : "chevron-down"}
             size={18}
             color={colors.mutedText}
           />
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
       <AppAnimatedDisclosure
+        mode="overlay"
         visible={showFilters}
-        maxHeight={260}
+        maxHeight={340}
         style={styles.movementFilterGroups}
+        overlayContentStyle={styles.movementFilterPanel}
       >
         <View style={styles.movementFilterGroup}>
           <Text style={styles.movementFilterGroupLabel}>Periodo</Text>
@@ -1775,20 +1930,23 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
             />
           </View>
         </View>
+        <View style={styles.filterContextSpacer} />
+        <Text style={styles.filterContextText}>
+          Periodo: {selectedMovementPeriodLabel} - Tipo: {selectedTypeLabel} -
+          Cuenta: {selectedAccountLabel} - Categoria: {selectedCategoryLabel}
+        </Text>
       </AppAnimatedDisclosure>
-      <View style={styles.filterContextSpacer} />
-      <Text numberOfLines={1} style={styles.filterContextText}>
-        Periodo: {selectedMovementPeriodLabel}
-      </Text>
     </View>
   );
 
-  const movementsContent = (
+  const movementsContent = useMemo(() => (
     <View style={styles.movementsContentWrap}>
       <MovementSummaryCard
         colors={colors}
         currency={data.currency}
-        isPreviousDisabled={movementSummaryMonth <= earliestMovementSummaryMonth}
+        isPreviousDisabled={
+          movementSummaryMonth <= earliestMovementSummaryMonth
+        }
         isNextDisabled={movementSummaryMonth >= latestMovementSummaryMonth}
         monthKey={movementSummaryMonth}
         range={movementSummaryRange}
@@ -1799,6 +1957,25 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         onPrevious={showPreviousMovementSummaryMonth}
       />
     </View>
+  ), [
+    colors,
+    data.currency,
+    earliestMovementSummaryMonth,
+    latestMovementSummaryMonth,
+    movementChartMode,
+    movementSummary,
+    movementSummaryMonth,
+    movementSummaryRange,
+    showAllMovementSummary,
+    showNextMovementSummaryMonth,
+    showPreviousMovementSummaryMonth,
+    styles,
+    summarizedMovements,
+  ]);
+
+  const listHeaderComponent = useMemo(
+    () => (activeSection === "balance" ? balanceContent : movementsContent),
+    [activeSection, balanceContent, movementsContent],
   );
 
   const fixedHeader = (
@@ -1829,53 +2006,39 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
         {fixedHeader}
         <FlatList
           data={activeSection === "movements" ? movementRows : []}
-          keyExtractor={(item) => item.id}
+          keyExtractor={movementKeyExtractor}
           renderItem={renderMovementRow}
-          ListHeaderComponent={
-            activeSection === "balance" ? balanceContent : movementsContent
-          }
+          ListHeaderComponent={listHeaderComponent}
           contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListEmptyComponent={
-            activeSection === "balance" ? null : isLoading &&
-              !hasLoadedFinancialDataOnce ? (
-              <Surface style={styles.emptyPanel} elevation={0}>
-                <AppLoadingState colors={colors} label="Cargando historial" />
-              </Surface>
-            ) : (
-              <AppEmptyState
-                icon="paw-outline"
-                title="Sin rastros todavia"
-                message="Aqui apareceran tus ingresos, gastos y movimientos entre cuentas. Registra el primero para que Meowney empiece a seguir el rastro de esta libreta."
-                style={styles.emptyPanel}
-              />
-            )
-          }
+          ItemSeparatorComponent={renderMovementSeparator}
+          ListEmptyComponent={renderMovementEmptyComponent}
           showsVerticalScrollIndicator={false}
         />
         {activeSection === "movements" ? (
-          <View style={styles.bottomAction}>
+          <AppBottomActionDrawer style={styles.bottomAction} onClose={closeCreateMenu}>
             {isCreateMenuMounted ? (
-              <Animated.View style={[styles.fabMenuWrap, createMenuAnimatedStyle]}>
+              <Animated.View
+                style={[styles.fabMenuWrap, createMenuAnimatedStyle]}
+              >
                 <Surface style={styles.fabMenu} elevation={0}>
                   <FabOption
                     colors={colors}
                     icon="arrow-up-circle-outline"
-                  label="Registrar ingreso"
+                    label="Registrar ingreso"
                     styles={styles}
                     onPress={() => openCreateForm("income")}
                   />
                   <FabOption
                     colors={colors}
                     icon="arrow-down-circle-outline"
-                  label="Registrar gasto"
+                    label="Registrar gasto"
                     styles={styles}
                     onPress={() => openCreateForm("expense")}
                   />
                   <FabOption
                     colors={colors}
                     icon="swap-horizontal-circle-outline"
-                  label="Mover entre cuentas"
+                    label="Mover entre cuentas"
                     styles={styles}
                     onPress={() => openCreateForm("transfer")}
                   />
@@ -1886,13 +2049,13 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
               accessibilityLabel={
                 createMenuOpen
                   ? "Cerrar opciones de movimiento"
-                  : "Registrar movimiento"
+                  : "Crear movimiento"
               }
-              label="Registrar movimiento"
+              label="Crear movimiento"
               style={styles.addButton}
               onPress={createMenuOpen ? closeCreateMenu : openCreateMenu}
             />
-          </View>
+          </AppBottomActionDrawer>
         ) : null}
       </View>
       <Portal>
@@ -2022,7 +2185,10 @@ export function FinancialSectionScreen({ section }: FinancialSectionScreenProps)
                 value={infoMovement.description || "Sin descripcion"}
               />
               {isActiveRecurringMovement(infoMovement) ? (
-                <AppInfoLine label="Recurrencia" value="Movimiento recurrente" />
+                <AppInfoLine
+                  label="Recurrencia"
+                  value="Movimiento recurrente"
+                />
               ) : null}
             </>
           ) : null}
@@ -2092,7 +2258,10 @@ function RecurringMovementScopeDialog({
         <Button textColor={colors.mutedText} onPress={() => onSelect("single")}>
           Solo este
         </Button>
-        <Button textColor={isEdit ? colors.success : colors.error} onPress={() => onSelect("future")}>
+        <Button
+          textColor={isEdit ? colors.success : colors.error}
+          onPress={() => onSelect("future")}
+        >
           Este y futuros
         </Button>
       </Dialog.Actions>
@@ -2166,6 +2335,7 @@ function MovementFormDialog({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [budgetMenuOpen, setBudgetMenuOpen] = useState(false);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [subcategoryMenuOpen, setSubcategoryMenuOpen] = useState(false);
   const [fromMenuOpen, setFromMenuOpen] = useState(false);
   const [frequencyMenuOpen, setFrequencyMenuOpen] = useState(false);
   const [toMenuOpen, setToMenuOpen] = useState(false);
@@ -2174,11 +2344,23 @@ function MovementFormDialog({
   const selectedAccount = accounts.find(
     (account) => account.id === values.accountId,
   );
-  const categoryOptions = categories.filter(
-    (category) => category.type === mode,
-  );
+  const categoryType =
+    mode === "income" || mode === "expense" ? mode : "expense";
+  const categoryOptions = getPrimaryCategories(categories, categoryType);
   const selectedCategory = categories.find(
     (category) => category.id === values.categoryId,
+  );
+  const selectedParentCategory = getSelectedParentCategory(
+    categories,
+    values.categoryId,
+  );
+  const selectedSubcategory = getSelectedSubcategory(
+    categories,
+    values.categoryId,
+  );
+  const subcategoryOptions = getSubcategories(
+    categories,
+    selectedParentCategory?.id,
   );
   const budgetOptions = budgets.filter(
     (budget) => budget.categoryId === values.categoryId,
@@ -2295,8 +2477,11 @@ function MovementFormDialog({
           <CategoryMenu
             categories={categoryOptions}
             colors={colors}
+            label="CATEGORIA"
             menuOpen={categoryMenuOpen}
-            selectedLabel={selectedCategory?.name ?? "Seleccionar categoria"}
+            selectedLabel={
+              selectedParentCategory?.name ?? "Seleccionar categoria"
+            }
             styles={styles}
             onDismiss={() => setCategoryMenuOpen(false)}
             onOpen={() => setCategoryMenuOpen(true)}
@@ -2305,6 +2490,24 @@ function MovementFormDialog({
               setCategoryMenuOpen(false);
             }}
           />
+          {subcategoryOptions.length > 0 ? (
+            <CategoryMenu
+              categories={subcategoryOptions}
+              colors={colors}
+              emptyValue={selectedParentCategory?.id}
+              emptyLabel="Sin subcategoria"
+              label="SUBCATEGORIA"
+              menuOpen={subcategoryMenuOpen}
+              selectedLabel={selectedSubcategory?.name ?? "Sin subcategoria"}
+              styles={styles}
+              onDismiss={() => setSubcategoryMenuOpen(false)}
+              onOpen={() => setSubcategoryMenuOpen(true)}
+              onSelect={(categoryId) => {
+                onChange({ ...values, categoryId, budgetId: "" });
+                setSubcategoryMenuOpen(false);
+              }}
+            />
+          ) : null}
           {mode === "expense" ? (
             <>
               <BudgetMenu
@@ -2353,7 +2556,11 @@ function MovementFormDialog({
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>DESCRIPCION</Text>
         <AppDescriptionInput
-          placeholder={isTransfer ? "Ej. Pase dinero a ahorros" : "Ej. Supermercado, nomina o gasolina"}
+          placeholder={
+            isTransfer
+              ? "Ej. Pase dinero a ahorros"
+              : "Ej. Supermercado, nomina o gasolina"
+          }
           value={values.description}
           scrollRef={formScrollRef}
           onChangeText={(description) => onChange({ ...values, description })}
@@ -2437,7 +2644,8 @@ function MovementFormDialog({
 
             {showRecurrenceError ? (
               <HelperText type="error" visible>
-                Usa un intervalo mayor a cero y una fecha final igual o posterior.
+                Usa un intervalo mayor a cero y una fecha final igual o
+                posterior.
               </HelperText>
             ) : null}
           </AppAnimatedDisclosure>
@@ -2595,6 +2803,9 @@ function AccountMenu({
 type CategoryMenuProps = {
   categories: Category[];
   colors: MeowneyColors;
+  emptyLabel?: string;
+  emptyValue?: string;
+  label: string;
   menuOpen: boolean;
   selectedLabel: string;
   styles: ReturnType<typeof createStyles>;
@@ -2606,6 +2817,9 @@ type CategoryMenuProps = {
 function CategoryMenu({
   categories,
   colors,
+  emptyLabel,
+  emptyValue,
+  label,
   menuOpen,
   selectedLabel,
   styles,
@@ -2615,7 +2829,7 @@ function CategoryMenu({
 }: CategoryMenuProps) {
   return (
     <View style={styles.pickerGroup}>
-      <Text style={styles.pickerLabel}>CATEGORIA</Text>
+      <Text style={styles.pickerLabel}>{label}</Text>
       <Menu
         visible={menuOpen}
         onDismiss={onDismiss}
@@ -2633,10 +2847,15 @@ function CategoryMenu({
           </Button>
         }
       >
+        {emptyLabel && emptyValue ? (
+          <Menu.Item title={emptyLabel} onPress={() => onSelect(emptyValue)} />
+        ) : null}
         {categories.map((category) => (
           <Menu.Item
             key={category.id}
-            title={category.name}
+            title={
+              getCategoryDisplayName(categories, category) || category.name
+            }
             onPress={() => onSelect(category.id)}
           />
         ))}
@@ -2792,8 +3011,10 @@ function MovementSummaryCard({
   onNext,
   onPrevious,
 }: MovementSummaryCardProps) {
-  const periodLabel = range === "all" ? "Todos" : formatMovementMonth(`${monthKey}-01`);
-  const totalLabel = summary.total === 1 ? "1 movimiento" : `${summary.total} movimientos`;
+  const periodLabel =
+    range === "all" ? "Todos" : formatMovementMonth(`${monthKey}-01`);
+  const totalLabel =
+    summary.total === 1 ? "1 movimiento" : `${summary.total} movimientos`;
 
   return (
     <View style={styles.balanceSection}>
@@ -2838,23 +3059,24 @@ function MovementSummaryCard({
         </Text>
         <View style={styles.movementSummaryGrid}>
           <MovementSummaryStat
-            colors={colors}
             icon="arrow-up-circle-outline"
-            label="Entró"
+            iconColor={getMovementColor(colors, "income")}
+            label="Ingresos"
             styles={styles}
             value={formatAmount(summary.income, currency)}
           />
           <MovementSummaryStat
-            colors={colors}
             icon="arrow-down-circle-outline"
-            label="Salió"
+            iconColor={getMovementColor(colors, "expense")}
+            label="Gastos"
             styles={styles}
             value={formatAmount(summary.expense, currency)}
           />
           <MovementSummaryStat
-            colors={colors}
             icon="swap-horizontal-circle-outline"
-            label="Traspaso"
+            iconColor={getMovementColor(colors, "transfer")}
+            label="Traspasos"
+            fullWidth
             styles={styles}
             value={formatAmount(summary.transfer, currency)}
           />
@@ -2865,26 +3087,43 @@ function MovementSummaryCard({
 }
 
 type MovementSummaryStatProps = {
-  colors: MeowneyColors;
+  fullWidth?: boolean;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  iconColor: string;
   label: string;
   styles: ReturnType<typeof createStyles>;
   value: string;
 };
 
 function MovementSummaryStat({
-  colors,
+  fullWidth = false,
   icon,
+  iconColor,
   label,
   styles,
   value,
 }: MovementSummaryStatProps) {
   return (
-    <View style={styles.movementSummaryStat}>
-      <MaterialCommunityIcons name={icon} size={20} color={colors.mutedText} />
+    <View
+      style={[
+        styles.movementSummaryStat,
+        fullWidth ? styles.movementSummaryStatFullWidth : null,
+      ]}
+    >
+      <View style={styles.movementSummaryStatHeader}>
+        <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
+        <Text numberOfLines={1} style={styles.movementSummaryStatLabel}>
+          {label}
+        </Text>
+      </View>
       <View style={styles.movementSummaryStatCopy}>
-        <Text numberOfLines={1} style={styles.movementSummaryStatLabel}>{label}</Text>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.movementSummaryStatValue}>{value}</Text>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={styles.movementSummaryStatValue}
+        >
+          {value}
+        </Text>
       </View>
     </View>
   );
@@ -2930,7 +3169,9 @@ function MovementChartCarousel({
   return (
     <View style={styles.balanceSection}>
       <View style={styles.balanceSectionHeader}>
-        <Text style={styles.balanceSectionTitle}>{getMovementChartTitle(mode)}</Text>
+        <Text style={styles.balanceSectionTitle}>
+          {getMovementChartTitle(mode)}
+        </Text>
         <View style={styles.balanceChartControls}>
           <IconButton
             accessibilityLabel="Grafica anterior"
@@ -3055,7 +3296,9 @@ function MovementCategoryTreemap({
 }: MovementCategoryTreemapProps) {
   const [chartWidth, setChartWidth] = useState(0);
   const categoryTotals = movements
-    .filter((movement) => movement.type === movementType && movement.categoryName)
+    .filter(
+      (movement) => movement.type === movementType && movement.categoryName,
+    )
     .reduce<Map<string, number>>((totals, movement) => {
       const category = movement.categoryName ?? "Sin categoría";
       totals.set(category, (totals.get(category) ?? 0) + movement.amount);
@@ -3163,7 +3406,9 @@ function MovementTransferRoutesChart({
   styles,
 }: MovementTransferRoutesChartProps) {
   const routeTotals = movements
-    .filter((movement) => movement.type === "transfer" && movement.toAccountName)
+    .filter(
+      (movement) => movement.type === "transfer" && movement.toAccountName,
+    )
     .reduce<Map<string, number>>((totals, movement) => {
       const route = `${movement.accountName} → ${movement.toAccountName}`;
       totals.set(route, (totals.get(route) ?? 0) + movement.amount);
@@ -3173,10 +3418,7 @@ function MovementTransferRoutesChart({
     .map(([label, amount]) => ({ amount, label }))
     .sort((first, second) => second.amount - first.amount)
     .slice(0, 4);
-  const maxAmount = rows.reduce(
-    (max, row) => Math.max(max, row.amount),
-    0,
-  );
+  const maxAmount = rows.reduce((max, row) => Math.max(max, row.amount), 0);
 
   if (maxAmount <= 0) {
     return (
@@ -3193,7 +3435,11 @@ function MovementTransferRoutesChart({
       {rows.map((row) => (
         <View key={row.label} style={styles.movementRouteRow}>
           <View style={styles.movementRouteHeader}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.movementRouteLabel}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={styles.movementRouteLabel}
+            >
               {row.label}
             </Text>
             <Text numberOfLines={1} style={styles.movementRouteAmount}>
@@ -3438,10 +3684,7 @@ function buildDistributionTreemap(
       ];
     }
 
-    const groupTotal = currentItems.reduce(
-      (sum, item) => sum + item.value,
-      0,
-    );
+    const groupTotal = currentItems.reduce((sum, item) => sum + item.value, 0);
     const [firstGroup, secondGroup] = splitDistributionItems(
       currentItems,
       groupTotal,
@@ -3598,7 +3841,11 @@ function BalanceTrendChart({
         <View style={[styles.trendGridLine, styles.trendGridLineBottom]} />
         <View style={styles.trendYAxisOverlay}>
           {yLabels.map((label, index) => (
-            <Text key={`${label}_${index}`} numberOfLines={1} style={styles.trendAxisLabel}>
+            <Text
+              key={`${label}_${index}`}
+              numberOfLines={1}
+              style={styles.trendAxisLabel}
+            >
               {formatCompactAmount(label)}
             </Text>
           ))}
@@ -3894,10 +4141,11 @@ function createStyles(colors: MeowneyColors) {
     },
     movementSummaryGrid: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: spacing.sm,
     },
     movementSummaryStat: {
-      flex: 1,
+      width: "48%",
       minWidth: 0,
       minHeight: 68,
       alignItems: "flex-start",
@@ -3909,9 +4157,19 @@ function createStyles(colors: MeowneyColors) {
       borderRadius: radii.input,
       backgroundColor: colors.selected,
     },
+    movementSummaryStatFullWidth: {
+      width: "100%",
+    },
+    movementSummaryStatHeader: {
+      maxWidth: "100%",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+    },
     movementSummaryStatCopy: {
       flex: 1,
       minWidth: 0,
+      justifyContent: "center",
     },
     movementSummaryStatLabel: {
       color: colors.mutedText,
@@ -4116,6 +4374,8 @@ function createStyles(colors: MeowneyColors) {
     filterSection: {
       alignItems: "stretch",
       gap: 2,
+      position: "relative",
+      zIndex: 6,
     },
     filterToggle: {
       minHeight: 36,
@@ -4124,6 +4384,12 @@ function createStyles(colors: MeowneyColors) {
       gap: spacing.md,
       paddingBottom: spacing.xs,
       paddingHorizontal: spacing.xs,
+    },
+    filterToggleMain: {
+      minHeight: 30,
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
       borderRadius: radii.button,
     },
     filterTogglePressed: {
@@ -4137,6 +4403,13 @@ function createStyles(colors: MeowneyColors) {
     },
     filterToggleSpacer: {
       flex: 1,
+    },
+    clearFilterButton: {
+      width: 30,
+      height: 30,
+      margin: 0,
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
     },
     filterContextText: {
       color: colors.mutedText,
@@ -4157,8 +4430,20 @@ function createStyles(colors: MeowneyColors) {
       gap: spacing.sm,
     },
     movementFilterGroups: {
+      position: "absolute",
+      top: 38,
+      left: 0,
+      right: 0,
+      width: "100%",
+      zIndex: 7,
+    },
+    movementFilterPanel: {
       width: "100%",
       gap: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+      paddingBottom: spacing.md,
     },
     movementFilterGroup: {
       gap: spacing.sm,
@@ -4302,13 +4587,7 @@ function createStyles(colors: MeowneyColors) {
     bottomAction: {
       position: "relative",
       alignItems: "center",
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
-      gap: spacing.sm,
+      alignSelf: "stretch",
       zIndex: 2,
     },
     addButton: {
@@ -4545,9 +4824,3 @@ function createStyles(colors: MeowneyColors) {
     },
   });
 }
-
-
-
-
-
-

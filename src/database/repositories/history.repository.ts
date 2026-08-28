@@ -25,6 +25,7 @@ type BalanceDeltaRow = {
 type CategoryRow = {
   id: string;
   name: string;
+  parentId: string | null;
   type: TransactionType;
 };
 
@@ -147,7 +148,7 @@ export const historyRepository = {
   listCategoriesByNotebook(notebookId: string): MovementCategoryFilter[] {
     const rows = database.getAllSync<CategoryRow>(
       `
-        SELECT id, name, type
+        SELECT id, name, parent_id AS parentId, type
         FROM category
         WHERE notebook_id = ?
           AND archived_at IS NULL
@@ -178,10 +179,11 @@ export const historyRepository = {
             NULL AS to_account_id,
             NULL AS to_account_name,
             c.id AS category_id,
-            c.name AS category_name
+            COALESCE(parent.name || ' / ' || c.name, c.name) AS category_name
           FROM "transaction" t
           INNER JOIN account a ON a.id = t.account_id
           LEFT JOIN category c ON c.id = t.category_id AND c.archived_at IS NULL
+          LEFT JOIN category parent ON parent.id = c.parent_id
           LEFT JOIN transaction_group_member tgm ON tgm.transaction_id = t.id
           LEFT JOIN transaction_group tg ON tg.id = tgm.group_id AND tg.archived_at IS NULL
           WHERE a.notebook_id = ?

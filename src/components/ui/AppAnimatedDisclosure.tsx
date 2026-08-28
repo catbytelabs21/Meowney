@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing } from 'react-native';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Animated, Easing, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { motion } from '@/theme/motion';
 
 type AppAnimatedDisclosureProps = {
   children: ReactNode;
   maxHeight: number;
+  mode?: 'inline' | 'overlay';
+  overlayContentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
   visible: boolean;
 };
@@ -13,41 +15,50 @@ type AppAnimatedDisclosureProps = {
 export function AppAnimatedDisclosure({
   children,
   maxHeight,
+  mode = 'inline',
+  overlayContentStyle,
   style,
   visible,
 }: AppAnimatedDisclosureProps) {
-  const [isMounted, setIsMounted] = useState(visible);
   const progress = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const isOverlay = mode === 'overlay';
 
   useEffect(() => {
     progress.stopAnimation();
 
-    if (visible) {
-      setIsMounted(true);
-      progress.setValue(0);
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: motion.disclosureOpenDuration,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-      return;
-    }
-
     Animated.timing(progress, {
-      toValue: 0,
-      duration: motion.disclosureCloseDuration,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) {
-        setIsMounted(false);
-      }
-    });
-  }, [progress, visible]);
+      toValue: visible ? 1 : 0,
+      duration: visible
+        ? motion.disclosureOpenDuration
+        : motion.disclosureCloseDuration,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: isOverlay,
+    }).start();
+  }, [isOverlay, progress, visible]);
 
-  if (!isMounted) {
-    return null;
+  if (isOverlay) {
+    const overlayAnimatedStyle = {
+      opacity: progress,
+      transform: [
+        {
+          translateY: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-12, 0],
+          }),
+        },
+      ],
+    };
+
+    return (
+      <View
+        pointerEvents={visible ? 'box-none' : 'none'}
+        style={[style, { maxHeight, overflow: 'hidden' }]}
+      >
+        <Animated.View style={[overlayContentStyle, overlayAnimatedStyle]}>
+          {children}
+        </Animated.View>
+      </View>
+    );
   }
 
   const animatedStyle = {
@@ -57,21 +68,11 @@ export function AppAnimatedDisclosure({
       outputRange: [0, maxHeight],
     }),
     overflow: 'hidden' as const,
-    transform: [
-      {
-        translateY: progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [-14, 0],
-        }),
-      },
-      {
-        scaleY: progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.96, 1],
-        }),
-      },
-    ],
   };
 
-  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
+  return (
+    <Animated.View pointerEvents={visible ? 'auto' : 'none'} style={[style, animatedStyle]}>
+      {children}
+    </Animated.View>
+  );
 }

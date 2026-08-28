@@ -23,6 +23,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppBottomActionDrawer } from '@/components/ui/AppBottomActionDrawer';
 import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
@@ -324,14 +325,14 @@ export function AccountsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.bottomAction}>
+            <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
                 accessibilityLabel="Agregar cuenta"
                 label="Agregar cuenta"
                 style={styles.addButton}
                 onPress={openCreate}
               />
-            </View>
+            </AppBottomActionDrawer>
           </>
         )}
       </AppScreen>
@@ -497,11 +498,9 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     accountRow: {
       minHeight: 68,
@@ -584,13 +583,9 @@ function createStyles(colors: MeowneyColors) {
     },
     bottomAction: {
       alignItems: 'center',
+      alignSelf: 'stretch',
       marginHorizontal: -spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      marginTop: -spacing.lg,
     },
     addButton: {
       width: '70%',

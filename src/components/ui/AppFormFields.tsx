@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text as NativeText, View, type DimensionValue } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text as NativeText, View } from 'react-native';
 import { Checkbox, IconButton, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
@@ -10,8 +10,7 @@ import { typography } from '@/theme/typography';
 
 type AppIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
-const CUSTOM_COLOR_SATURATION = 0.84;
-const MIN_CUSTOM_COLOR_VALUE = 0.24;
+const MIN_CUSTOM_COLOR_VALUE = 0;
 const HUE_STOPS = [0, 30, 60, 90, 120, 160, 190, 220, 250, 280, 310, 340, 360];
 
 type AppInfoLineProps = {
@@ -99,28 +98,52 @@ export function AppIconPickerGrid<IconName extends AppIconName>({
 }: AppIconPickerGridProps<IconName>) {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
-  const cellWidth = `${Math.max(1, Math.floor(100 / columns) - 3)}%` as DimensionValue;
+  const [pickerWidth, setPickerWidth] = useState(1);
+  const pageSize = Math.max(1, columns);
+  const iconPages = useMemo(
+    () =>
+      Array.from({ length: Math.ceil(icons.length / pageSize) }, (_, index) =>
+        icons.slice(index * pageSize, index * pageSize + pageSize),
+      ),
+    [icons, pageSize],
+  );
 
   return (
-    <View style={styles.choiceGrid}>
-      {icons.map((icon) => {
-        const selected = selectedIcon === icon;
+    <View
+      style={styles.iconPickerFrame}
+      onLayout={(event) => setPickerWidth(Math.max(1, event.nativeEvent.layout.width))}
+    >
+      <ScrollView
+        horizontal
+        pagingEnabled
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={pickerWidth}
+        decelerationRate="fast"
+      >
+        {iconPages.map((page, pageIndex) => (
+          <View key={`icon_page_${pageIndex}`} style={[styles.iconChoicePage, { width: pickerWidth }]}>
+            {page.map((icon) => {
+              const selected = selectedIcon === icon;
 
-        return (
-          <View key={icon} style={[styles.iconChoiceCell, { width: cellWidth }]}>
-            <IconButton
-              icon={icon}
-              size={22}
-              mode="contained-tonal"
-              iconColor={selected ? colors.onPrimary : colors.text}
-              containerColor={selected ? colors.primary : colors.selected}
-              style={styles.iconChoice}
-              onPress={() => onSelect(icon)}
-              accessibilityLabel={`Icono ${icon}`}
-            />
+              return (
+                <View key={icon} style={styles.iconChoiceCell}>
+                  <IconButton
+                    icon={icon}
+                    size={22}
+                    mode="contained-tonal"
+                    iconColor={selected ? colors.onPrimary : colors.text}
+                    containerColor={selected ? colors.primary : colors.selected}
+                    style={styles.iconChoice}
+                    onPress={() => onSelect(icon)}
+                    accessibilityLabel={`Icono ${icon}`}
+                  />
+                </View>
+              );
+            })}
           </View>
-        );
-      })}
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -129,35 +152,62 @@ export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === 'light' ? lightColors : darkColors;
   const normalizedSelectedColor = normalizeHexColor(selectedColor);
+  const lastSelectedColorRef = useRef(normalizedSelectedColor);
   const defaultColors = colorOptions
     .map((color) => normalizeHexColor(color))
     .filter((color): color is string => Boolean(color));
   const selectedHsv = hexToHsv(normalizedSelectedColor ?? colorOptions[0] ?? colors.irisGleam);
   const [customHue, setCustomHue] = useState(selectedHsv.h);
+  const [customSaturation, setCustomSaturation] = useState(selectedHsv.s);
   const [customValue, setCustomValue] = useState(selectedHsv.v);
-  const customColor = hsvToHex(customHue, CUSTOM_COLOR_SATURATION, customValue);
+  const [customColorOpen, setCustomColorOpen] = useState(false);
+  const customColor = hsvToHex(customHue, customSaturation, customValue);
+  const saturationStops = useMemo(
+    () => Array.from({ length: 8 }, (_, index) => hsvToHex(customHue, index / 7, customValue)),
+    [customHue, customValue],
+  );
   const intensityStops = useMemo(
     () =>
       Array.from({ length: 8 }, (_, index) =>
         hsvToHex(
           customHue,
-          CUSTOM_COLOR_SATURATION,
+          customSaturation,
           MIN_CUSTOM_COLOR_VALUE + ((1 - MIN_CUSTOM_COLOR_VALUE) * index) / 7,
         ),
       ),
-    [customHue],
+    [customHue, customSaturation],
   );
 
   useEffect(() => {
+    lastSelectedColorRef.current = normalizedSelectedColor;
     setCustomHue(selectedHsv.h);
+    setCustomSaturation(selectedHsv.s);
     setCustomValue(Math.max(MIN_CUSTOM_COLOR_VALUE, selectedHsv.v));
-  }, [selectedHsv.h, selectedHsv.v]);
+  }, [normalizedSelectedColor, selectedHsv.h, selectedHsv.s, selectedHsv.v]);
 
-  const updateCustomColor = (nextHue: number, nextValue: number) => {
+  const selectColor = useCallback(
+    (color: string) => {
+      const normalizedColor = normalizeHexColor(color);
+
+      if (!normalizedColor || normalizedColor === lastSelectedColorRef.current) {
+        return;
+      }
+
+      lastSelectedColorRef.current = normalizedColor;
+      onSelect(normalizedColor);
+    },
+    [onSelect],
+  );
+
+  const updateCustomColor = useCallback((nextHue: number, nextSaturation: number, nextValue: number) => {
     setCustomHue(nextHue);
+    setCustomSaturation(nextSaturation);
     setCustomValue(nextValue);
-    onSelect(hsvToHex(nextHue, CUSTOM_COLOR_SATURATION, nextValue));
-  };
+  }, []);
+
+  const commitCustomColor = useCallback((nextHue: number, nextSaturation: number, nextValue: number) => {
+    selectColor(hsvToHex(nextHue, nextSaturation, nextValue));
+  }, [selectColor]);
 
   return (
     <View style={styles.colorPickerWrap}>
@@ -170,7 +220,7 @@ export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Color ${normalizedColor}`}
-                onPress={() => onSelect(normalizedColor)}
+                onPress={() => selectColor(normalizedColor)}
                 style={[
                   styles.colorChoice,
                   { backgroundColor: normalizedColor, borderColor: selected ? colors.text : colors.border },
@@ -185,34 +235,71 @@ export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }
       </View>
 
       <View style={[styles.customColorPanel, { borderColor: colors.border, backgroundColor: colors.surfaceAlt }]}>
-        <View style={styles.customColorHeader}>
-          <View style={[styles.customColorPreview, { backgroundColor: customColor, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="check" size={18} color={getReadableSwatchIconColor(customColor, colors)} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: customColorOpen }}
+          accessibilityLabel={customColorOpen ? 'Cerrar color personalizado' : 'Abrir color personalizado'}
+          onPress={() => setCustomColorOpen((current) => !current)}
+          style={({ pressed }) => [
+            styles.customColorHeader,
+            pressed && { backgroundColor: colors.pressed },
+          ]}
+        >
+          <View style={styles.customColorHeaderContent}>
+            <View style={[styles.customColorPreview, { backgroundColor: customColor, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="check" size={18} color={getReadableSwatchIconColor(customColor, colors)} />
+            </View>
+            <View style={styles.customColorCopy}>
+              <NativeText style={[styles.customColorLabel, { color: colors.mutedText }]}>COLOR PERSONALIZADO</NativeText>
+              <NativeText style={[styles.customColorValue, { color: colors.text }]}>{customColor}</NativeText>
+            </View>
+            <MaterialCommunityIcons
+              name={customColorOpen ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.mutedText}
+            />
           </View>
-          <View style={styles.customColorCopy}>
-            <NativeText style={[styles.customColorLabel, { color: colors.mutedText }]}>COLOR PERSONALIZADO</NativeText>
-            <NativeText style={[styles.customColorValue, { color: colors.text }]}>{customColor}</NativeText>
+        </Pressable>
+        {customColorOpen ? (
+          <View style={styles.customColorControls}>
+            <ColorRangeControl
+              label="Color"
+              value={customHue / 360}
+              stops={HUE_STOPS.map((hue) => hsvToHex(hue, customSaturation, customValue))}
+              colors={colors}
+              onChange={(value) => updateCustomColor(value * 360, customSaturation, customValue)}
+              onChangeEnd={(value) => commitCustomColor(value * 360, customSaturation, customValue)}
+            />
+            <ColorRangeControl
+              label="Saturacion"
+              value={customSaturation}
+              stops={saturationStops}
+              colors={colors}
+              onChange={(value) => updateCustomColor(customHue, value, customValue)}
+              onChangeEnd={(value) => commitCustomColor(customHue, value, customValue)}
+            />
+            <ColorRangeControl
+              label="Brillo"
+              value={(customValue - MIN_CUSTOM_COLOR_VALUE) / (1 - MIN_CUSTOM_COLOR_VALUE)}
+              stops={intensityStops}
+              colors={colors}
+              onChange={(value) =>
+                updateCustomColor(
+                  customHue,
+                  customSaturation,
+                  MIN_CUSTOM_COLOR_VALUE + value * (1 - MIN_CUSTOM_COLOR_VALUE),
+                )
+              }
+              onChangeEnd={(value) =>
+                commitCustomColor(
+                  customHue,
+                  customSaturation,
+                  MIN_CUSTOM_COLOR_VALUE + value * (1 - MIN_CUSTOM_COLOR_VALUE),
+                )
+              }
+            />
           </View>
-        </View>
-        <ColorRangeControl
-          label="Color"
-          value={customHue / 360}
-          stops={HUE_STOPS.map((hue) => hsvToHex(hue, CUSTOM_COLOR_SATURATION, customValue))}
-          colors={colors}
-          onChange={(value) => updateCustomColor(Math.round(value * 360), customValue)}
-        />
-        <ColorRangeControl
-          label="Intensidad"
-          value={(customValue - MIN_CUSTOM_COLOR_VALUE) / (1 - MIN_CUSTOM_COLOR_VALUE)}
-          stops={intensityStops}
-          colors={colors}
-          onChange={(value) =>
-            updateCustomColor(
-              customHue,
-              MIN_CUSTOM_COLOR_VALUE + value * (1 - MIN_CUSTOM_COLOR_VALUE),
-            )
-          }
-        />
+        ) : null}
       </View>
     </View>
   );
@@ -224,15 +311,86 @@ type ColorRangeControlProps = {
   stops: string[];
   value: number;
   onChange: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
 };
 
-function ColorRangeControl({ colors, label, stops, value, onChange }: ColorRangeControlProps) {
+function ColorRangeControl({ colors, label, stops, value, onChange, onChangeEnd }: ColorRangeControlProps) {
   const [trackWidth, setTrackWidth] = useState(1);
   const trackPageX = useRef(0);
   const trackRef = useRef<View | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastValueRef = useRef(clamp01(value));
+  const pendingValueRef = useRef<number | null>(null);
   const clampedValue = clamp01(value);
+
+  useEffect(() => {
+    lastValueRef.current = clampedValue;
+  }, [clampedValue]);
+
+  useEffect(
+    () => () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    },
+    [],
+  );
+
+  const emitValue = useCallback(
+    (nextValue: number) => {
+      const nextClampedValue = clamp01(nextValue);
+
+      if (Math.abs(nextClampedValue - lastValueRef.current) < 0.001) {
+        return;
+      }
+
+      lastValueRef.current = nextClampedValue;
+      onChange(nextClampedValue);
+    },
+    [onChange],
+  );
+
+  const scheduleValue = useCallback(
+    (nextValue: number) => {
+      pendingValueRef.current = clamp01(nextValue);
+
+      if (animationFrameRef.current !== null) {
+        return;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        animationFrameRef.current = null;
+        const pendingValue = pendingValueRef.current;
+        pendingValueRef.current = null;
+
+        if (pendingValue !== null) {
+          emitValue(pendingValue);
+        }
+      });
+    },
+    [emitValue],
+  );
+
+  const flushPendingValue = useCallback(() => {
+    const pendingValue = pendingValueRef.current;
+    const valueToCommit = pendingValue ?? lastValueRef.current;
+
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    pendingValueRef.current = null;
+
+    if (pendingValue !== null) {
+      emitValue(pendingValue);
+    }
+
+    onChangeEnd?.(clamp01(valueToCommit));
+  }, [emitValue, onChangeEnd]);
+
   const updateFromPageX = (pageX: number) => {
-    onChange(clamp01((pageX - trackPageX.current) / trackWidth));
+    scheduleValue((pageX - trackPageX.current) / trackWidth);
   };
   const measureTrack = (afterMeasure?: () => void) => {
     trackRef.current?.measure((_x, _y, width, _height, pageX) => {
@@ -253,8 +411,10 @@ function ColorRangeControl({ colors, label, stops, value, onChange }: ColorRange
         onPanResponderMove: (_event, gestureState) => {
           updateFromPageX(gestureState.moveX);
         },
+        onPanResponderRelease: flushPendingValue,
+        onPanResponderTerminate: flushPendingValue,
       }),
-    [onChange, trackWidth],
+    [flushPendingValue, scheduleValue, trackWidth],
   );
 
   return (
@@ -376,7 +536,8 @@ function hexToHsv(color: string) {
   }
 
   return {
-    h: Math.round((hue + 360) % 360),
+    h: (hue + 360) % 360,
+    s: max === 0 ? 0 : delta / max,
     v: Math.max(MIN_CUSTOM_COLOR_VALUE, max),
   };
 }
@@ -499,15 +660,19 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     textAlignVertical: 'top',
   },
-  choiceGrid: {
+  iconPickerFrame: {
+    overflow: 'hidden',
+  },
+  iconChoicePage: {
+    minHeight: 44,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   iconChoiceCell: {
+    width: '20%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   iconChoice: {
     width: 40,
@@ -544,16 +709,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   customColorPanel: {
-    gap: spacing.sm,
+    overflow: 'hidden',
     borderWidth: 1,
     borderRadius: radii.card,
-    padding: spacing.md,
   },
   customColorHeader: {
     minHeight: 44,
+    justifyContent: 'center',
+    borderRadius: radii.card,
+    padding: spacing.md,
+  },
+  customColorHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  customColorControls: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   customColorPreview: {
     width: 42,

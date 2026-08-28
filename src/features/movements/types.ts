@@ -6,6 +6,7 @@ import type {
 export type MovementCategoryFilter = {
   id: string;
   name: string;
+  parentId: string | null;
   type: "income" | "expense";
 };
 

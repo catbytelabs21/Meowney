@@ -1,11 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useMemo } from "react";
+import { type Href, router } from "expo-router";
+import { useCallback, useMemo, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Surface, Text } from "react-native-paper";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { AppScreen } from "@/components/layout/AppScreen";
 import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { motion } from "@/theme/motion";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -14,43 +15,57 @@ type MoreIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 type MoreItem = {
   description: string;
+  href: Href<string | object>;
   icon: MoreIconName;
   label: string;
-  onPress: () => void;
 };
 
 export function MoreScreen() {
   const colorScheme = useMeowneyColorScheme();
   const colors = colorScheme === "light" ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const navigationLockedRef = useRef(false);
+
+  const navigateOnce = useCallback((href: Href<string | object>) => {
+    if (navigationLockedRef.current) {
+      return;
+    }
+
+    navigationLockedRef.current = true;
+    router.push(href);
+
+    setTimeout(() => {
+      navigationLockedRef.current = false;
+    }, motion.screenTransitionDuration + 300);
+  }, []);
 
   const setupItems: MoreItem[] = [
     {
-      description: "Donde vive tu dinero",
+      description: "Tu dinero diario",
+      href: "/accounts",
       icon: "wallet-outline",
       label: "Cuentas",
-      onPress: () => router.push("/accounts"),
     },
     {
-      description: "Etiquetas para ordenar ingresos y gastos",
+      description: "Orden para movimientos",
+      href: "/categories",
       icon: "tag-outline",
       label: "Categorias",
-      onPress: () => router.push("/categories"),
     },
   ];
 
   const controlItems: MoreItem[] = [
     {
-      description: "Limites para cuidar tus gastos",
+      description: "Limites de gasto",
+      href: "/budgets",
       icon: "cash-lock",
       label: "Presupuestos",
-      onPress: () => router.push("/budgets"),
     },
     {
-      description: "Pagos que regresan cada cierto tiempo",
+      description: "Pagos recurrentes",
+      href: "/subscriptions",
       icon: "calendar-sync-outline",
       label: "Suscripciones",
-      onPress: () => router.push("/subscriptions"),
     },
   ];
 
@@ -67,12 +82,14 @@ export function MoreScreen() {
         label="PARA EMPEZAR"
         styles={styles}
         colors={colors}
+        onNavigate={navigateOnce}
       />
       <MoreSection
         items={controlItems}
         label="CONTROL"
         styles={styles}
         colors={colors}
+        onNavigate={navigateOnce}
       />
     </AppScreen>
   );
@@ -82,10 +99,11 @@ type MoreSectionProps = {
   colors: MeowneyColors;
   items: MoreItem[];
   label: string;
+  onNavigate: (href: Href<string | object>) => void;
   styles: ReturnType<typeof createStyles>;
 };
 
-function MoreSection({ colors, items, label, styles }: MoreSectionProps) {
+function MoreSection({ colors, items, label, onNavigate, styles }: MoreSectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label}</Text>
@@ -94,7 +112,7 @@ function MoreSection({ colors, items, label, styles }: MoreSectionProps) {
           <Pressable
             key={item.label}
             accessibilityRole="button"
-            onPress={item.onPress}
+            onPress={() => onNavigate(item.href)}
             style={({ pressed }) => [
               styles.item,
               index > 0 && styles.itemBorder,

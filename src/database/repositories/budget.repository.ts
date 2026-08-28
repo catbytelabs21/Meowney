@@ -64,11 +64,12 @@ export const budgetRepository = {
       `
         SELECT
           b.*,
-          c.name AS category_name,
+          COALESCE(parent.name || ' / ' || c.name, c.name) AS category_name,
           c.icon AS category_icon,
           c.color AS category_color
         FROM budget b
         INNER JOIN category c ON c.id = b.category_id
+        LEFT JOIN category parent ON parent.id = c.parent_id
         WHERE c.notebook_id = ?
           AND b.archived_at IS NULL
           AND c.archived_at IS NULL
@@ -98,14 +99,16 @@ export const budgetRepository = {
     const row = database.getFirstSync<{ total: number | null }>(
       `
         SELECT COALESCE(SUM(amount), 0) AS total
-        FROM "transaction"
-        WHERE category_id = ?
-          AND type = 'expense'
-          AND archived_at IS NULL
-          AND date(transaction_at) >= date(?)
-          AND (? IS NULL OR date(transaction_at) <= date(?))
-          AND (? IS NULL OR id != ?)
+        FROM "transaction" t
+        LEFT JOIN category c ON c.id = t.category_id
+        WHERE (t.category_id = ? OR c.parent_id = ?)
+          AND t.type = 'expense'
+          AND t.archived_at IS NULL
+          AND date(t.transaction_at) >= date(?)
+          AND (? IS NULL OR date(t.transaction_at) <= date(?))
+          AND (? IS NULL OR t.id != ?)
       `,
+      budget.category_id,
       budget.category_id,
       budget.start_date,
       budget.end_date,

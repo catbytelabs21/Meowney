@@ -24,6 +24,7 @@ export type CategoryInput = {
 };
 
 type DefaultCategory = {
+  children?: string[];
   color: string | null;
   icon: string;
   name: string;
@@ -31,20 +32,21 @@ type DefaultCategory = {
 };
 
 const defaultCategories: DefaultCategory[] = [
-  { color: '#7DD8A8', icon: 'briefcase-outline', name: 'Sueldo', type: 'income' },
-  { color: '#00B3DD', icon: 'cart-outline', name: 'Venta', type: 'income' },
-  { color: '#DD90D8', icon: 'gift-outline', name: 'Regalo', type: 'income' },
-  { color: '#847DFF', icon: 'chart-line', name: 'Intereses', type: 'income' },
-  { color: '#D1C9FF', icon: 'paw-outline', name: 'Ingreso extra', type: 'income' },
-  { color: '#FFB4AB', icon: 'fish', name: 'Comida', type: 'expense' },
-  { color: '#90B8F0', icon: 'bus', name: 'Transporte', type: 'expense' },
-  { color: '#F1C27D', icon: 'home-outline', name: 'Hogar', type: 'expense' },
-  { color: '#CACACA', icon: 'bell-outline', name: 'Servicios', type: 'expense' },
-  { color: '#DD90D8', icon: 'heart-pulse', name: 'Salud', type: 'expense' },
-  { color: '#847DFF', icon: 'movie-open-outline', name: 'Entretenimiento', type: 'expense' },
-  { color: '#00B3DD', icon: 'school-outline', name: 'Educacion', type: 'expense' },
-  { color: '#4B49AA', icon: 'cart-outline', name: 'Compras', type: 'expense' },
-  { color: '#6A6B6B', icon: 'paw-outline', name: 'Otros gastos', type: 'expense' },
+  { color: '#CACACA', icon: 'bell-outline', name: 'Servicios', type: 'expense', children: ['Luz', 'Agua', 'Gas', 'Internet', 'Telefono'] },
+  { color: '#F1C27D', icon: 'home-outline', name: 'Hogar', type: 'expense', children: ['Renta', 'Mantenimiento', 'Limpieza', 'Muebles', 'Reparaciones'] },
+  { color: '#FFB4AB', icon: 'silverware-fork-knife', name: 'Comida', type: 'expense', children: ['Supermercado', 'Restaurantes', 'Comida rapida', 'Cafeterias', 'Delivery'] },
+  { color: '#90B8F0', icon: 'bus', name: 'Transporte', type: 'expense', children: ['Gasolina', 'Transporte publico', 'Taxi/Uber', 'Estacionamiento', 'Mantenimiento'] },
+  { color: '#DD90D8', icon: 'heart-pulse', name: 'Salud', type: 'expense', children: ['Consultas', 'Medicamentos', 'Estudios', 'Dentista', 'Terapia'] },
+  { color: '#D1C9FF', icon: 'tshirt-crew-outline', name: 'Ropa', type: 'expense', children: ['Ropa', 'Calzado', 'Accesorios', 'Uniformes'] },
+  { color: '#847DFF', icon: 'movie-open-outline', name: 'Entretenimiento', type: 'expense', children: ['Cine', 'Videojuegos', 'Salidas', 'Eventos', 'Hobbies'] },
+  { color: '#00B3DD', icon: 'paw-outline', name: 'Mascotas', type: 'expense', children: ['Alimento', 'Veterinario', 'Medicamentos', 'Accesorios', 'Higiene'] },
+  { color: '#4B49AA', icon: 'calendar-sync-outline', name: 'Suscripciones', type: 'expense', children: ['Streaming', 'Musica', 'Software', 'Aplicaciones', 'Membresias'] },
+  { color: '#6A6B6B', icon: 'dots-horizontal-circle-outline', name: 'Otros', type: 'expense', children: ['Educacion', 'Regalos', 'Tramites', 'Emergencias', 'Otros gastos'] },
+  { color: '#7DD8A8', icon: 'briefcase-outline', name: 'Trabajo', type: 'income', children: ['Sueldo', 'Bonos', 'Comisiones', 'Freelance', 'Horas extra'] },
+  { color: '#847DFF', icon: 'chart-line', name: 'Inversiones', type: 'income', children: ['Intereses', 'Dividendos', 'Rendimientos', 'Ganancias'] },
+  { color: '#DD90D8', icon: 'gift-outline', name: 'Regalos', type: 'income', children: ['Familia', 'Pareja', 'Amigos', 'Donaciones'] },
+  { color: '#00B3DD', icon: 'cart-outline', name: 'Ventas', type: 'income', children: ['Articulos personales', 'Electronicos', 'Ropa', 'Vehiculos', 'Otras ventas'] },
+  { color: '#D1C9FF', icon: 'cash-plus', name: 'Otros', type: 'income', children: ['Reembolsos', 'Cashback', 'Premios', 'Apoyos', 'Otros ingresos'] },
 ];
 
 const previousDefaultIcons: Record<string, string> = {
@@ -82,11 +84,16 @@ export const categoryRepository = {
   listActiveByNotebook(notebookId: string) {
     const rows = database.getAllSync<CategoryRow>(
       `
-        SELECT *
+        SELECT category.*
         FROM category
-        WHERE notebook_id = ?
-          AND archived_at IS NULL
-        ORDER BY type ASC, name COLLATE NOCASE ASC
+        LEFT JOIN category parent ON parent.id = category.parent_id
+        WHERE category.notebook_id = ?
+          AND category.archived_at IS NULL
+        ORDER BY
+          category.type ASC,
+          COALESCE(parent.name, category.name) COLLATE NOCASE ASC,
+          category.parent_id IS NOT NULL ASC,
+          category.name COLLATE NOCASE ASC
       `,
       notebookId,
     );
@@ -248,24 +255,32 @@ export const categoryRepository = {
     );
   },
 
+  findActiveByName(notebookId: string, type: CategoryType, name: string, parentId: string | null) {
+    const row = database.getFirstSync<CategoryRow>(
+      `
+        SELECT *
+        FROM category
+        WHERE notebook_id = ?
+          AND type = ?
+          AND name = ?
+          AND ((? IS NULL AND parent_id IS NULL) OR parent_id = ?)
+          AND archived_at IS NULL
+        LIMIT 1
+      `,
+      notebookId,
+      type,
+      name,
+      parentId,
+      parentId,
+    );
+
+    return row ? mapCategory(row) : null;
+  },
+
   seedDefaultCategories(notebookId: string) {
     defaultCategories.forEach((category) => {
-      const existing = database.getFirstSync<CategoryRow>(
-        `
-          SELECT *
-          FROM category
-          WHERE notebook_id = ?
-            AND type = ?
-            AND name = ?
-            AND archived_at IS NULL
-          LIMIT 1
-        `,
-        notebookId,
-        category.type,
-        category.name,
-      );
-
-      if (!existing) {
+      const parent =
+        this.findActiveByName(notebookId, category.type, category.name, null) ??
         this.create({
           notebookId,
           name: category.name,
@@ -274,12 +289,32 @@ export const categoryRepository = {
           color: category.color,
           parentId: null,
         });
-        return;
-      }
+
+      category.children?.forEach((childName) => {
+        const existingChild = this.findActiveByName(
+          notebookId,
+          category.type,
+          childName,
+          parent.id,
+        );
+
+        if (existingChild) {
+          return;
+        }
+
+        this.create({
+          notebookId,
+          name: childName,
+          type: category.type,
+          icon: category.icon,
+          color: category.color,
+          parentId: parent.id,
+        });
+      });
 
       const previousIcon = previousDefaultIcons[`${category.type}:${category.name}`];
 
-      if (previousIcon && existing.icon === previousIcon) {
+      if (previousIcon && parent.icon === previousIcon) {
         database.runSync(
           `
             UPDATE category
@@ -290,7 +325,7 @@ export const categoryRepository = {
           `,
           category.icon,
           nowIso(),
-          existing.id,
+          parent.id,
           notebookId,
         );
       }

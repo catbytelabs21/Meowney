@@ -21,6 +21,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
 import { AppScreen } from '@/components/layout/AppScreen';
 import { AppActionMenu } from '@/components/ui/AppActionMenu';
+import { AppBottomActionDrawer } from '@/components/ui/AppBottomActionDrawer';
 import { AppCatFab } from '@/components/ui/AppCatFab';
 import { AppEmptyState } from '@/components/ui/AppEmptyState';
 import { AppInfoLine } from '@/components/ui/AppFormFields';
@@ -37,6 +38,13 @@ import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import {
+  getCategoryDisplayName,
+  getPrimaryCategories,
+  getSelectedParentCategory,
+  getSelectedSubcategory,
+  getSubcategories,
+} from '@/utils/categoryHierarchy';
 import { formatAppDate, formatAppDateTime } from '@/utils/dateFormat';
 import type { BudgetListItem, BudgetPeriod } from './types';
 import type { Category } from '@/features/categories/types';
@@ -373,7 +381,7 @@ export function BudgetsScreen() {
           <AppHeaderActionButton
             accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
-            onPress={() => router.replace('/more')}
+            onPress={() => router.back()}
           />
         }
       />
@@ -417,7 +425,7 @@ export function BudgetsScreen() {
               }
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.bottomAction}>
+            <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
                 accessibilityLabel="Agregar presupuesto"
                 disabled={data.categories.length === 0}
@@ -425,7 +433,7 @@ export function BudgetsScreen() {
                 style={styles.addButton}
                 onPress={openCreate}
               />
-            </View>
+            </AppBottomActionDrawer>
           </>
         )}
       </AppScreen>
@@ -516,6 +524,10 @@ function BudgetFormDialog({
   onSave,
 }: BudgetFormDialogProps) {
   const selectedCategory = getSelectedCategory(categories, values.categoryId);
+  const selectedParentCategory = getSelectedParentCategory(categories, values.categoryId);
+  const selectedSubcategory = getSelectedSubcategory(categories, values.categoryId);
+  const parentOptions = getPrimaryCategories(categories, 'expense');
+  const subcategoryOptions = getSubcategories(categories, selectedParentCategory?.id);
   const isCustomPeriod = values.period === 'custom';
 
   return (
@@ -531,12 +543,12 @@ function BudgetFormDialog({
               <AppSelectMenu
                 icon="chevron-down"
                 label="Categoria"
-                options={categories.map((category) => ({
-                  label: category.name,
+                options={parentOptions.map((category) => ({
+                  label: getCategoryDisplayName(categories, category),
                   value: category.id,
                 }))}
-                selectedLabel={selectedCategory?.name ?? 'Seleccionar'}
-                selectedValue={values.categoryId}
+                selectedLabel={selectedParentCategory?.name ?? 'Seleccionar'}
+                selectedValue={selectedParentCategory?.id ?? ''}
                 buttonStyle={styles.select}
                 buttonContentStyle={styles.selectContent}
                 menuContentStyle={styles.menuContent}
@@ -548,6 +560,29 @@ function BudgetFormDialog({
                 </HelperText>
               ) : null}
             </View>
+
+            {subcategoryOptions.length > 0 ? (
+              <View style={styles.pickerGroup}>
+                <Text style={styles.pickerLabel}>SUBCATEGORIA</Text>
+                <AppSelectMenu
+                  icon="chevron-down"
+                  label="Subcategoria"
+                  options={[
+                    { label: 'Sin subcategoria', value: selectedParentCategory?.id ?? '' },
+                    ...subcategoryOptions.map((category) => ({
+                      label: category.name,
+                      value: category.id,
+                    })),
+                  ]}
+                  selectedLabel={selectedSubcategory?.name ?? 'Sin subcategoria'}
+                  selectedValue={selectedCategory?.id ?? ''}
+                  buttonStyle={styles.select}
+                  buttonContentStyle={styles.selectContent}
+                  menuContentStyle={styles.menuContent}
+                  onSelect={(categoryId) => onChange({ ...values, categoryId })}
+                />
+              </View>
+            ) : null}
 
             <View style={styles.pickerGroup}>
               <Text style={styles.pickerLabel}>MONTO</Text>
@@ -636,11 +671,9 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     budgetRow: {
       minHeight: 76,
@@ -733,13 +766,9 @@ function createStyles(colors: MeowneyColors) {
     },
     bottomAction: {
       alignItems: 'center',
+      alignSelf: 'stretch',
       marginHorizontal: -spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      marginTop: -spacing.lg,
     },
     addButton: {
       width: '70%',

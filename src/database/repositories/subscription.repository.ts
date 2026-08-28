@@ -1,9 +1,10 @@
 import { database } from '@/database/database';
-import type { Subscription, SubscriptionFrequency } from '@/features/subscriptions/types';
+import type { Subscription, SubscriptionFrequency, SubscriptionListItem } from '@/features/subscriptions/types';
 
 type SubscriptionRow = {
   id: string;
   notebook_id: string;
+  category_id: string;
   name: string;
   amount: number;
   payment_frequency: SubscriptionFrequency;
@@ -15,8 +16,15 @@ type SubscriptionRow = {
   archived_at: string | null;
 };
 
+type SubscriptionListRow = SubscriptionRow & {
+  category_color: string | null;
+  category_icon: string | null;
+  category_name: string;
+};
+
 export type SubscriptionInput = {
   amount: number;
+  categoryId: string;
   color: string | null;
   icon: string | null;
   name: string;
@@ -28,6 +36,7 @@ function mapSubscription(row: SubscriptionRow): Subscription {
   return {
     id: row.id,
     notebookId: row.notebook_id,
+    categoryId: row.category_id,
     name: row.name,
     amount: row.amount,
     paymentFrequency: row.payment_frequency,
@@ -37,6 +46,15 @@ function mapSubscription(row: SubscriptionRow): Subscription {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
+  };
+}
+
+function mapSubscriptionListItem(row: SubscriptionListRow): SubscriptionListItem {
+  return {
+    ...mapSubscription(row),
+    categoryColor: row.category_color,
+    categoryIcon: row.category_icon,
+    categoryName: row.category_name,
   };
 }
 
@@ -50,18 +68,25 @@ function nowIso() {
 
 export const subscriptionRepository = {
   listActiveByNotebook(notebookId: string) {
-    const rows = database.getAllSync<SubscriptionRow>(
+    const rows = database.getAllSync<SubscriptionListRow>(
       `
-        SELECT *
-        FROM subscription
-        WHERE notebook_id = ?
-          AND archived_at IS NULL
-        ORDER BY datetime(updated_at) DESC, name COLLATE NOCASE ASC
+        SELECT
+          s.*,
+          COALESCE(parent.name || ' / ' || c.name, c.name) AS category_name,
+          c.icon AS category_icon,
+          c.color AS category_color
+        FROM subscription s
+        INNER JOIN category c ON c.id = s.category_id
+        LEFT JOIN category parent ON parent.id = c.parent_id
+        WHERE s.notebook_id = ?
+          AND s.archived_at IS NULL
+          AND c.archived_at IS NULL
+        ORDER BY datetime(s.updated_at) DESC, s.name COLLATE NOCASE ASC
       `,
       notebookId,
     );
 
-    return rows.map(mapSubscription);
+    return rows.map(mapSubscriptionListItem);
   },
 
   create(notebookId: string, input: SubscriptionInput) {
@@ -69,6 +94,7 @@ export const subscriptionRepository = {
     const subscription: Subscription = {
       id: createId(),
       notebookId,
+      categoryId: input.categoryId,
       name: input.name,
       amount: input.amount,
       paymentFrequency: input.paymentFrequency,
@@ -85,6 +111,7 @@ export const subscriptionRepository = {
         INSERT INTO subscription (
           id,
           notebook_id,
+          category_id,
           name,
           amount,
           payment_frequency,
@@ -95,10 +122,11 @@ export const subscriptionRepository = {
           updated_at,
           archived_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       `,
       subscription.id,
       subscription.notebookId,
+      subscription.categoryId,
       subscription.name,
       subscription.amount,
       subscription.paymentFrequency,
@@ -120,6 +148,7 @@ export const subscriptionRepository = {
         UPDATE subscription
         SET
           name = ?,
+          category_id = ?,
           amount = ?,
           payment_frequency = ?,
           notes = ?,
@@ -130,6 +159,7 @@ export const subscriptionRepository = {
           AND archived_at IS NULL
       `,
       input.name,
+      input.categoryId,
       input.amount,
       input.paymentFrequency,
       input.notes,

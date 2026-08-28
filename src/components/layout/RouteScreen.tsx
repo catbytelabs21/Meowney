@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type Href, router } from 'expo-router';
 import { AppHeader } from './AppHeader';
 import { colors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
 import { spacing } from '@/theme/spacing';
 
 type RouteScreenProps = {
@@ -18,6 +20,21 @@ type RouteScreenProps = {
 };
 
 export function RouteScreen({ actions = [], headerLeft, headerTitle, title }: RouteScreenProps) {
+  const navigationLockedRef = useRef(false);
+
+  const navigateOnce = useCallback((href: Href<string | object>) => {
+    if (navigationLockedRef.current) {
+      return;
+    }
+
+    navigationLockedRef.current = true;
+    router.push(href);
+
+    setTimeout(() => {
+      navigationLockedRef.current = false;
+    }, motion.screenTransitionDuration + 300);
+  }, []);
+
   return (
     <View style={styles.safeArea}>
       {headerTitle ? <AppHeader title={headerTitle} left={headerLeft} /> : null}
@@ -28,7 +45,7 @@ export function RouteScreen({ actions = [], headerLeft, headerTitle, title }: Ro
             <Button
               key={action.label}
               mode="contained"
-              onPress={() => router.push(action.href)}
+              onPress={() => navigateOnce(action.href)}
               style={styles.button}
             >
               {action.label}

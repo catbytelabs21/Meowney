@@ -1,41 +1,75 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { HelperText, IconButton, Menu, Portal, Surface, Text, TextInput } from 'react-native-paper';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton';
-import { AppScreen } from '@/components/layout/AppScreen';
-import { AppActionMenu } from '@/components/ui/AppActionMenu';
-import { AppAnimatedDisclosure } from '@/components/ui/AppAnimatedDisclosure';
-import { AppCatFab } from '@/components/ui/AppCatFab';
-import { AppEmptyState } from '@/components/ui/AppEmptyState';
-import { AppColorPicker, AppDescriptionInput, AppIconPickerGrid, AppInfoLine } from '@/components/ui/AppFormFields';
-import { AppConfirmDialog, AppContentDialog, AppFormDialog } from '@/components/ui/AppFormDialog';
-import { AppLoadingState } from '@/components/ui/AppLoadingState';
-import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
-import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import {
+  HelperText,
+  IconButton,
+  Menu,
+  Portal,
+  Surface,
+  Text,
+  TextInput,
+} from "react-native-paper";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { AppHeaderActionButton } from "@/components/layout/AppHeaderActionButton";
+import { AppScreen } from "@/components/layout/AppScreen";
+import { AppActionMenu } from "@/components/ui/AppActionMenu";
+import { AppAnimatedDisclosure } from "@/components/ui/AppAnimatedDisclosure";
+import { AppBottomActionDrawer } from "@/components/ui/AppBottomActionDrawer";
+import { AppCatFab } from "@/components/ui/AppCatFab";
+import { AppEmptyState } from "@/components/ui/AppEmptyState";
+import {
+  AppColorPicker,
+  AppDescriptionInput,
+  AppIconPickerGrid,
+  AppInfoLine,
+} from "@/components/ui/AppFormFields";
+import {
+  AppConfirmDialog,
+  AppContentDialog,
+  AppFormDialog,
+} from "@/components/ui/AppFormDialog";
+import { AppLoadingState } from "@/components/ui/AppLoadingState";
+import { AppMeowneySnackbar } from "@/components/ui/AppMeowneySnackbar";
+import { AppSelectMenu } from "@/components/ui/AppSelectMenu";
 import {
   SUBSCRIPTION_ICON_OPTIONS,
   getSubscriptionColorOptions,
   type SubscriptionIconName,
-} from '@/constants/subscriptions';
-import { notebookRepository } from '@/database/repositories/notebook.repository';
-import { subscriptionRepository, type SubscriptionInput } from '@/database/repositories/subscription.repository';
-import { useDeferredQuery } from '@/hooks/useDeferredQuery';
-import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
-import { radii } from '@/theme/radii';
-import { spacing } from '@/theme/spacing';
-import { typography } from '@/theme/typography';
-import { formatAppDateTime } from '@/utils/dateFormat';
-import type { Subscription, SubscriptionFrequency } from './types';
+} from "@/constants/subscriptions";
+import { categoryRepository } from "@/database/repositories/category.repository";
+import { notebookRepository } from "@/database/repositories/notebook.repository";
+import {
+  subscriptionRepository,
+  type SubscriptionInput,
+} from "@/database/repositories/subscription.repository";
+import { useDeferredQuery } from "@/hooks/useDeferredQuery";
+import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
+import { useAppStore } from "@/stores/app.store";
+import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { radii } from "@/theme/radii";
+import { spacing } from "@/theme/spacing";
+import { typography } from "@/theme/typography";
+import {
+  getCategoryAndChildIds,
+  getCategoryDisplayName,
+  getCategoryDisplayNameById,
+  getPrimaryCategories,
+  getSelectedParentCategory,
+  getSelectedSubcategory,
+  getSubcategories,
+} from "@/utils/categoryHierarchy";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import type { Category } from "@/features/categories/types";
+import type { SubscriptionFrequency, SubscriptionListItem } from "./types";
 
-type FrequencyFilter = 'all' | SubscriptionFrequency;
+type FrequencyFilter = "all" | SubscriptionFrequency;
+type CategoryFilter = "all" | string;
 
 type SubscriptionFormValues = {
   amount: string;
+  categoryId: string;
   color: string;
   icon: SubscriptionIconName;
   name: string;
@@ -44,62 +78,76 @@ type SubscriptionFormValues = {
 };
 
 type SubscriptionData = {
+  categories: Category[];
   currency: string;
-  subscriptions: Subscription[];
+  subscriptions: SubscriptionListItem[];
 };
 
 const frequencyOptions: { label: string; value: SubscriptionFrequency }[] = [
-  { label: 'Semanal', value: 'weekly' },
-  { label: 'Mensual', value: 'monthly' },
-  { label: 'Trimestral', value: 'quarterly' },
-  { label: 'Semestral', value: 'semiannual' },
-  { label: 'Anual', value: 'annual' },
+  { label: "Semanal", value: "weekly" },
+  { label: "Mensual", value: "monthly" },
+  { label: "Bimestral", value: "bimonthly" },
+  { label: "Trimestral", value: "quarterly" },
+  { label: "Semestral", value: "semiannual" },
+  { label: "Anual", value: "annual" },
 ];
 
 const filterOptions: { label: string; value: FrequencyFilter }[] = [
-  { label: 'Todas', value: 'all' },
+  { label: "Todas", value: "all" },
   ...frequencyOptions,
 ];
 
-function getInitialForm(colors: MeowneyColors): SubscriptionFormValues {
+function getInitialForm(
+  colors: MeowneyColors,
+  categories: Category[],
+): SubscriptionFormValues {
   return {
-    amount: '',
+    amount: "",
+    categoryId: categories[0]?.id ?? "",
     color: colors.irisGleam,
-    icon: 'play-box-outline',
-    name: '',
-    notes: '',
-    paymentFrequency: 'monthly',
+    icon: "play-box-outline",
+    name: "",
+    notes: "",
+    paymentFrequency: "monthly",
   };
 }
 
-function getFormFromSubscription(subscription: Subscription, colors: MeowneyColors): SubscriptionFormValues {
-  const fallback = getInitialForm(colors);
+function getFormFromSubscription(
+  subscription: SubscriptionListItem,
+  colors: MeowneyColors,
+  categories: Category[],
+): SubscriptionFormValues {
+  const fallback = getInitialForm(colors, categories);
 
   return {
     amount: String(subscription.amount / 100),
+    categoryId: subscription.categoryId,
     color: subscription.color ?? fallback.color,
     icon: (subscription.icon as SubscriptionIconName | null) ?? fallback.icon,
     name: subscription.name,
-    notes: subscription.notes ?? '',
+    notes: subscription.notes ?? "",
     paymentFrequency: subscription.paymentFrequency,
   };
 }
 
 function parseAmount(value: string) {
-  const normalized = value.replace(',', '.').trim();
+  const normalized = value.replace(",", ".").trim();
   const number = Number(normalized);
-  return Number.isFinite(number) && number > 0 ? Math.round(number * 100) : null;
+  return Number.isFinite(number) && number > 0
+    ? Math.round(number * 100)
+    : null;
 }
 
 function toInput(values: SubscriptionFormValues): SubscriptionInput | null {
   const amount = parseAmount(values.amount);
 
-  if (!values.name.trim() || !amount) {
+  if (!values.name.trim() || !values.categoryId || !amount) {
     return null;
   }
 
   return {
     amount,
+    categoryId: values.categoryId,
     color: values.color,
     icon: values.icon,
     name: values.name.trim(),
@@ -108,8 +156,14 @@ function toInput(values: SubscriptionFormValues): SubscriptionInput | null {
   };
 }
 
+function getSelectedCategory(categories: Category[], categoryId: string) {
+  return categories.find((category) => category.id === categoryId) ?? null;
+}
+
 function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat('es-MX', { currency, style: 'currency' }).format(amount / 100);
+  return new Intl.NumberFormat("es-MX", { currency, style: "currency" }).format(
+    amount / 100,
+  );
 }
 
 function formatDateTime(value: string) {
@@ -117,23 +171,30 @@ function formatDateTime(value: string) {
 }
 
 function formatFrequency(frequency: SubscriptionFrequency) {
-  return frequencyOptions.find((option) => option.value === frequency)?.label ?? 'Mensual';
+  return (
+    frequencyOptions.find((option) => option.value === frequency)?.label ??
+    "Mensual"
+  );
 }
 
-function getMonthlyEquivalent(subscription: Subscription) {
-  if (subscription.paymentFrequency === 'weekly') {
-    return subscription.amount * 52 / 12;
+function getMonthlyEquivalent(subscription: SubscriptionListItem) {
+  if (subscription.paymentFrequency === "weekly") {
+    return (subscription.amount * 52) / 12;
   }
 
-  if (subscription.paymentFrequency === 'quarterly') {
+  if (subscription.paymentFrequency === "quarterly") {
     return subscription.amount / 3;
   }
 
-  if (subscription.paymentFrequency === 'semiannual') {
+  if (subscription.paymentFrequency === "bimonthly") {
+    return subscription.amount / 2;
+  }
+
+  if (subscription.paymentFrequency === "semiannual") {
     return subscription.amount / 6;
   }
 
-  if (subscription.paymentFrequency === 'annual') {
+  if (subscription.paymentFrequency === "annual") {
     return subscription.amount / 12;
   }
 
@@ -142,27 +203,48 @@ function getMonthlyEquivalent(subscription: Subscription) {
 
 export function SubscriptionsScreen() {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
-  const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
+  const selectedNotebookName = useAppStore(
+    (state) => state.selectedNotebookName,
+  );
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = colorScheme === "light" ? lightColors : darkColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getSubscriptionColorOptions(colors), [colors]);
+  const colorOptions = useMemo(
+    () => getSubscriptionColorOptions(colors),
+    [colors],
+  );
   const stableCurrency = useMemo(
-    () => (selectedNotebookId ? notebookRepository.getActiveById(selectedNotebookId)?.currency ?? 'MXN' : 'MXN'),
+    () =>
+      selectedNotebookId
+        ? (notebookRepository.getActiveById(selectedNotebookId)?.currency ??
+          "MXN")
+        : "MXN",
     [selectedNotebookId],
   );
   const stableNotebookName = useMemo(
-    () => selectedNotebookName ?? (selectedNotebookId ? notebookRepository.getActiveById(selectedNotebookId)?.name ?? null : null),
+    () =>
+      selectedNotebookName ??
+      (selectedNotebookId
+        ? (notebookRepository.getActiveById(selectedNotebookId)?.name ?? null)
+        : null),
     [selectedNotebookId, selectedNotebookName],
   );
   const loadSubscriptionData = useCallback((): SubscriptionData => {
     if (!selectedNotebookId) {
-      return { currency: stableCurrency, subscriptions: [] };
+      return { categories: [], currency: stableCurrency, subscriptions: [] };
     }
 
+    categoryRepository.seedDefaultCategories(selectedNotebookId);
+
     return {
-      currency: notebookRepository.getActiveById(selectedNotebookId)?.currency ?? stableCurrency,
-      subscriptions: subscriptionRepository.listActiveByNotebook(selectedNotebookId),
+      categories: categoryRepository
+        .listActiveByNotebook(selectedNotebookId)
+        .filter((category) => category.type === "expense"),
+      currency:
+        notebookRepository.getActiveById(selectedNotebookId)?.currency ??
+        stableCurrency,
+      subscriptions:
+        subscriptionRepository.listActiveByNotebook(selectedNotebookId),
     };
   }, [selectedNotebookId, stableCurrency]);
   const {
@@ -170,24 +252,39 @@ export function SubscriptionsScreen() {
     error: loadError,
     isLoading,
     reload,
-  } = useDeferredQuery(loadSubscriptionData, { currency: stableCurrency, subscriptions: [] });
-  const [frequencyFilter, setFrequencyFilter] = useState<FrequencyFilter>('all');
-  const [selectedSubscriptionIds, setSelectedSubscriptionIds] = useState<string[]>([]);
-  const [infoSubscription, setInfoSubscription] = useState<Subscription | null>(null);
-  const [deleteSubscription, setDeleteSubscription] = useState<Subscription | null>(null);
-  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
+  } = useDeferredQuery(loadSubscriptionData, {
+    categories: [],
+    currency: stableCurrency,
+    subscriptions: [],
+  });
+  const [frequencyFilter, setFrequencyFilter] =
+    useState<FrequencyFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [selectedSubscriptionIds, setSelectedSubscriptionIds] = useState<
+    string[]
+  >([]);
+  const [infoSubscription, setInfoSubscription] =
+    useState<SubscriptionListItem | null>(null);
+  const [deleteSubscription, setDeleteSubscription] =
+    useState<SubscriptionListItem | null>(null);
+  const [editingSubscription, setEditingSubscription] =
+    useState<SubscriptionListItem | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formValues, setFormValues] = useState(() => getInitialForm(colors));
+  const [formValues, setFormValues] = useState(() => getInitialForm(colors, []));
   const [showNameError, setShowNameError] = useState(false);
   const [showAmountError, setShowAmountError] = useState(false);
-  const [actionMenuSubscriptionId, setActionMenuSubscriptionId] = useState<string | null>(null);
-  const [selectionMenuOpen, setSelectionMenuOpen] = useState(false);
+  const [showCategoryError, setShowCategoryError] = useState(false);
+  const [actionMenuSubscriptionId, setActionMenuSubscriptionId] = useState<
+    string | null
+  >(null);
   const [showFilters, setShowFilters] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedSubscriptionIds((current) => {
-      const activeIds = new Set(data.subscriptions.map((subscription) => subscription.id));
+      const activeIds = new Set(
+        data.subscriptions.map((subscription) => subscription.id),
+      );
       const next = current.filter((id) => activeIds.has(id));
       const missing = data.subscriptions
         .map((subscription) => subscription.id)
@@ -198,33 +295,56 @@ export function SubscriptionsScreen() {
   }, [data.subscriptions]);
 
   const filteredSubscriptions = useMemo(() => {
-    if (frequencyFilter === 'all') {
-      return data.subscriptions;
-    }
+    const categoryFilterIds =
+      categoryFilter === "all"
+        ? null
+        : getCategoryAndChildIds(data.categories, categoryFilter);
 
-    return data.subscriptions.filter((subscription) => subscription.paymentFrequency === frequencyFilter);
-  }, [data.subscriptions, frequencyFilter]);
+    return data.subscriptions.filter(
+      (subscription) =>
+        (frequencyFilter === "all" ||
+          subscription.paymentFrequency === frequencyFilter) &&
+        (!categoryFilterIds || categoryFilterIds.has(subscription.categoryId)),
+    );
+  }, [categoryFilter, data.categories, data.subscriptions, frequencyFilter]);
   const selectedSubscriptions = useMemo(
-    () => data.subscriptions.filter((subscription) => selectedSubscriptionIds.includes(subscription.id)),
+    () =>
+      data.subscriptions.filter((subscription) =>
+        selectedSubscriptionIds.includes(subscription.id),
+      ),
     [data.subscriptions, selectedSubscriptionIds],
   );
-  const selectedTotal = selectedSubscriptions.reduce((sum, subscription) => sum + subscription.amount, 0);
-  const monthlyAverage = data.subscriptions.reduce((sum, subscription) => sum + getMonthlyEquivalent(subscription), 0);
-  const filterLabel = filterOptions.find((option) => option.value === frequencyFilter)?.label ?? 'Todas';
+  const selectedTotal = selectedSubscriptions.reduce(
+    (sum, subscription) => sum + subscription.amount,
+    0,
+  );
+  const monthlyAverage = data.subscriptions.reduce(
+    (sum, subscription) => sum + getMonthlyEquivalent(subscription),
+    0,
+  );
+  const filterLabel =
+    filterOptions.find((option) => option.value === frequencyFilter)?.label ??
+    "Todas";
+  const categoryFilterLabel =
+    categoryFilter === "all"
+      ? "Todas"
+      : (getCategoryDisplayNameById(data.categories, categoryFilter) || "Todas");
 
   const openCreate = () => {
-    setFormValues(getInitialForm(colors));
+    setFormValues(getInitialForm(colors, data.categories));
     setEditingSubscription(null);
     setShowNameError(false);
     setShowAmountError(false);
+    setShowCategoryError(false);
     setIsFormOpen(true);
   };
 
-  const openEdit = (subscription: Subscription) => {
-    setFormValues(getFormFromSubscription(subscription, colors));
+  const openEdit = (subscription: SubscriptionListItem) => {
+    setFormValues(getFormFromSubscription(subscription, colors, data.categories));
     setEditingSubscription(subscription);
     setShowNameError(false);
     setShowAmountError(false);
+    setShowCategoryError(false);
     setIsFormOpen(true);
   };
 
@@ -232,12 +352,16 @@ export function SubscriptionsScreen() {
     setIsFormOpen(false);
     setEditingSubscription(null);
     setActionMenuSubscriptionId(null);
+    setShowNameError(false);
+    setShowAmountError(false);
+    setShowCategoryError(false);
   };
 
   const saveForm = () => {
     const input = toInput(formValues);
     setShowNameError(!formValues.name.trim());
     setShowAmountError(!parseAmount(formValues.amount));
+    setShowCategoryError(!formValues.categoryId);
 
     if (!input || !selectedNotebookId) {
       return;
@@ -245,10 +369,10 @@ export function SubscriptionsScreen() {
 
     if (editingSubscription) {
       subscriptionRepository.update(editingSubscription.id, input);
-      setSnackbarMessage('Suscripcion actualizada.');
+      setSnackbarMessage("Suscripcion actualizada.");
     } else {
       subscriptionRepository.create(selectedNotebookId, input);
-      setSnackbarMessage('Suscripcion agregada.');
+      setSnackbarMessage("Suscripcion agregada.");
     }
 
     closeForm();
@@ -262,19 +386,87 @@ export function SubscriptionsScreen() {
 
     subscriptionRepository.archive(deleteSubscription.id);
     setDeleteSubscription(null);
-    setSnackbarMessage('Suscripcion archivada.');
+    setSnackbarMessage("Suscripcion archivada.");
     reload();
   };
 
-  const toggleSubscription = (id: string) => {
+  const categoryFilterOptions = useMemo(
+    () => [
+      { label: "Todas", value: "all" },
+      ...data.categories.map((category) => ({
+        label: getCategoryDisplayName(data.categories, category),
+        value: category.id,
+      })),
+    ],
+    [data.categories],
+  );
+  const toggleFilters = useCallback(() => {
+    setShowFilters((current) => !current);
+  }, []);
+  const clearFilters = useCallback(() => {
+    setFrequencyFilter("all");
+    setCategoryFilter("all");
+  }, []);
+  const toggleSubscription = useCallback((id: string) => {
     setSelectedSubscriptionIds((current) =>
-      current.includes(id) ? current.filter((currentId) => currentId !== id) : [...current, id],
+      current.includes(id)
+        ? current.filter((currentId) => currentId !== id)
+        : [...current, id],
     );
-  };
+  }, []);
 
-  const renderSubscription = ({ item }: { item: Subscription }) => {
+  const selectVisibleSubscriptions = useCallback(() => {
+    setSelectedSubscriptionIds((current) => [
+      ...current.filter(
+        (id) =>
+          !filteredSubscriptions.some((subscription) => subscription.id === id),
+      ),
+      ...filteredSubscriptions.map((subscription) => subscription.id),
+    ]);
+  }, [filteredSubscriptions]);
+
+  const deselectVisibleSubscriptions = useCallback(() => {
+    const visibleIds = new Set(
+      filteredSubscriptions.map((subscription) => subscription.id),
+    );
+
+    setSelectedSubscriptionIds((current) =>
+      current.filter((id) => !visibleIds.has(id)),
+    );
+  }, [filteredSubscriptions]);
+
+  const keyExtractor = useCallback((item: SubscriptionListItem) => item.id, []);
+  const renderSeparator = useCallback(() => <View style={styles.separator} />, [styles.separator]);
+  const renderEmptyComponent = useCallback(
+    () =>
+      isLoading ? (
+        <AppLoadingState
+          colors={colors}
+          label="Cargando suscripciones"
+        />
+      ) : (
+        <AppEmptyState
+          icon="calendar-sync-outline"
+          title={
+            loadError
+              ? "No se pudieron cargar las suscripciones"
+              : "Aun no hay suscripciones"
+          }
+          message={
+            loadError
+              ? "Intenta entrar de nuevo o revisa que la base de datos este disponible."
+              : "Aqui apareceran pagos que se repiten, como streaming, renta o servicios. Agrega una suscripcion para saber cuanto se junta cada mes y desde que cuenta sale."
+          }
+          style={styles.emptyState}
+        />
+      ),
+    [colors, isLoading, loadError, styles.emptyState],
+  );
+
+  const renderSubscription = useCallback(({ item }: { item: SubscriptionListItem }) => {
     const checked = selectedSubscriptionIds.includes(item.id);
-    const iconName = (item.icon as SubscriptionIconName | null) ?? 'play-box-outline';
+    const iconName =
+      (item.icon as SubscriptionIconName | null) ?? "play-box-outline";
     const color = item.color ?? colors.irisGleam;
 
     return (
@@ -284,10 +476,19 @@ export function SubscriptionsScreen() {
           accessibilityState={{ checked }}
           accessibilityLabel={`Incluir ${item.name} en el pago`}
           onPress={() => toggleSubscription(item.id)}
-          style={({ pressed }) => [styles.subscriptionContent, pressed && styles.subscriptionPressed]}
+          style={({ pressed }) => [
+            styles.subscriptionContent,
+            pressed && styles.subscriptionPressed,
+          ]}
         >
-          <View style={[styles.subscriptionIconWrap, { backgroundColor: color }]}>
-            <MaterialCommunityIcons name={iconName} size={20} color={colors.void} />
+          <View
+            style={[styles.subscriptionIconWrap, { backgroundColor: color }]}
+          >
+            <MaterialCommunityIcons
+              name={iconName}
+              size={20}
+              color={colors.void}
+            />
           </View>
           <View style={styles.nameCopy}>
             <Text numberOfLines={1} style={styles.subscriptionName}>
@@ -296,13 +497,21 @@ export function SubscriptionsScreen() {
             <Text numberOfLines={1} style={styles.subscriptionMeta}>
               {formatFrequency(item.paymentFrequency)}
             </Text>
+            <Text numberOfLines={1} style={styles.subscriptionCategory}>
+              {item.categoryName}
+            </Text>
           </View>
           <View style={styles.amountCopy}>
             <Text numberOfLines={1} style={styles.subscriptionAmount}>
               {formatAmount(item.amount, data.currency)}
             </Text>
-            <Text style={[styles.selectionState, checked ? styles.selectionStateChecked : null]}>
-              {checked ? 'Incluida' : 'Sin incluir'}
+            <Text
+              style={[
+                styles.selectionState,
+                checked ? styles.selectionStateChecked : null,
+              ]}
+            >
+              {checked ? "Incluida" : "Sin incluir"}
             </Text>
           </View>
         </Pressable>
@@ -349,33 +558,62 @@ export function SubscriptionsScreen() {
         </AppActionMenu>
       </Surface>
     );
-  };
+  }, [
+    actionMenuSubscriptionId,
+    colors.irisGleam,
+    colors.mutedText,
+    colors.void,
+    data.currency,
+    selectedSubscriptionIds,
+    styles,
+    toggleSubscription,
+  ]);
 
   const subscriptionFilters = (
     <View style={styles.filterSection}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
-        onPress={() => setShowFilters((current) => !current)}
-        style={({ pressed }) => [
-          styles.filterToggle,
-          pressed ? styles.filterTogglePressed : null,
-        ]}
-      >
-        <Text style={styles.filterToggleText}>Filtros</Text>
-        <View style={styles.filterToggleSpacer} />
-        <View style={styles.chevronButton}>
+      <View style={styles.filterToggle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+          onPress={toggleFilters}
+          style={({ pressed }) => [
+            styles.filterToggleMain,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
+          <Text style={styles.filterToggleText}>Filtros</Text>
+          <View style={styles.filterToggleSpacer} />
+        </Pressable>
+        <IconButton
+          accessibilityLabel="Borrar filtros"
+          icon="filter-remove-outline"
+          iconColor={colors.mutedText}
+          size={18}
+          style={styles.clearFilterButton}
+          onPress={clearFilters}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+          onPress={toggleFilters}
+          style={({ pressed }) => [
+            styles.chevronButton,
+            pressed ? styles.filterTogglePressed : null,
+          ]}
+        >
           <MaterialCommunityIcons
-            name={showFilters ? 'chevron-up' : 'chevron-down'}
+            name={showFilters ? "chevron-up" : "chevron-down"}
             size={18}
             color={colors.mutedText}
           />
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
       <AppAnimatedDisclosure
+        mode="overlay"
         visible={showFilters}
-        maxHeight={180}
+        maxHeight={230}
         style={styles.filterGroups}
+        overlayContentStyle={styles.filterPanel}
       >
         <View style={styles.filterGroup}>
           <Text style={styles.filterGroupLabel}>Periodo</Text>
@@ -396,100 +634,172 @@ export function SubscriptionsScreen() {
           </View>
         </View>
         <View style={styles.filterGroup}>
-          <Text style={styles.filterGroupLabel}>Seleccion</Text>
+          <Text style={styles.filterGroupLabel}>Categoria</Text>
           <View style={styles.filterGrid}>
             <View style={styles.filterControl}>
-              <AppActionMenu
-                visible={selectionMenuOpen}
-                onDismiss={() => setSelectionMenuOpen(false)}
-                contentStyle={styles.menuContent}
-                anchor={
-                  <IconButton
-                    accessibilityLabel="Acciones de seleccion"
-                    icon="checkbox-marked-circle-outline"
-                    iconColor={colors.text}
-                    size={20}
-                    style={styles.filterIconButton}
-                    onPress={() => setSelectionMenuOpen(true)}
-                  />
-                }
-              >
-                <Menu.Item
-                  leadingIcon="checkbox-multiple-marked-outline"
-                  title="Seleccionar visibles"
-                  onPress={() => {
-                    setSelectedSubscriptionIds(filteredSubscriptions.map((subscription) => subscription.id));
-                    setSelectionMenuOpen(false);
-                  }}
-                />
-                <Menu.Item
-                  leadingIcon="checkbox-multiple-blank-outline"
-                  title="Limpiar seleccion"
-                  onPress={() => {
-                    setSelectedSubscriptionIds([]);
-                    setSelectionMenuOpen(false);
-                  }}
-                />
-              </AppActionMenu>
+              <AppSelectMenu
+                anchor="icon"
+                icon="shape-outline"
+                label="Categoria"
+                options={categoryFilterOptions}
+                selectedLabel={categoryFilterLabel}
+                selectedValue={categoryFilter}
+                iconButtonStyle={styles.filterIconButton}
+                menuContentStyle={styles.menuContent}
+                onSelect={setCategoryFilter}
+              />
             </View>
           </View>
         </View>
+        <View style={styles.filterContextSpacer} />
+        <Text numberOfLines={1} style={styles.filterContextText}>
+          Periodo: {filterLabel} - Categoria: {categoryFilterLabel}
+        </Text>
       </AppAnimatedDisclosure>
-      <View style={styles.filterContextSpacer} />
-      <Text numberOfLines={1} style={styles.filterContextText}>
-        Periodo: {filterLabel}
-      </Text>
     </View>
   );
 
-  const subscriptionsOverview = (
+  const subscriptionsOverview = useMemo(() => (
     <View style={styles.summaryHeader}>
       <View style={styles.summarySection}>
         <View style={styles.summaryTitleRow}>
           <Text style={styles.summaryTitle}>Resumen mensual</Text>
-          <Text style={styles.summaryCount}>{data.subscriptions.length} registradas</Text>
+          <Text style={styles.summaryCount}>
+            {data.subscriptions.length} registradas
+          </Text>
         </View>
 
         <Surface style={styles.summaryTable} elevation={0}>
           <View style={styles.metricRow}>
             <View style={styles.metricIcon}>
-              <MaterialCommunityIcons name="cash-check" size={18} color={colors.text} />
+              <MaterialCommunityIcons
+                name="cash-check"
+                size={18}
+                color={colors.text}
+              />
             </View>
             <View style={styles.metricCopy}>
-              <Text numberOfLines={1} style={styles.metricLabel}>Seleccionados</Text>
-              <Text style={styles.metricHint}>{selectedSubscriptions.length} pagos incluidos</Text>
+              <Text numberOfLines={1} style={styles.metricLabel}>
+                Seleccionados
+              </Text>
+              <Text style={styles.metricHint}>
+                {selectedSubscriptions.length} pagos incluidos
+              </Text>
             </View>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={styles.metricValue}
+            >
               {formatAmount(selectedTotal, data.currency)}
             </Text>
           </View>
           <View style={styles.metricDivider} />
           <View style={styles.metricRow}>
             <View style={styles.metricIcon}>
-              <MaterialCommunityIcons name="calendar-month-outline" size={18} color={colors.text} />
+              <MaterialCommunityIcons
+                name="calendar-month-outline"
+                size={18}
+                color={colors.text}
+              />
             </View>
             <View style={styles.metricCopy}>
-              <Text numberOfLines={1} style={styles.metricLabel}>Costo mensual</Text>
-              <Text style={styles.metricHint}>Convertido a monto mensual</Text>
+              <Text numberOfLines={1} style={styles.metricLabel}>
+                Costo mensual
+              </Text>
+              <Text style={styles.metricHint}>Equivalente mensual</Text>
             </View>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.metricValue}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={styles.metricValue}
+            >
               {formatAmount(monthlyAverage, data.currency)}
             </Text>
           </View>
         </Surface>
       </View>
     </View>
-  );
+  ), [
+    colors.text,
+    data.currency,
+    data.subscriptions.length,
+    monthlyAverage,
+    selectedSubscriptions.length,
+    selectedTotal,
+    styles.metricCopy,
+    styles.metricDivider,
+    styles.metricHint,
+    styles.metricIcon,
+    styles.metricLabel,
+    styles.metricRow,
+    styles.metricValue,
+    styles.summaryCount,
+    styles.summaryHeader,
+    styles.summarySection,
+    styles.summaryTable,
+    styles.summaryTitle,
+    styles.summaryTitleRow,
+  ]);
+
+  const subscriptionListHeader = useMemo(() => (
+    <View style={styles.listHeader}>
+      {subscriptionsOverview}
+      <View style={styles.listSectionHeader}>
+        <Text style={styles.listSectionTitle}>Suscripciones</Text>
+        <View style={styles.listSectionControls}>
+          <IconButton
+            accessibilityLabel="Seleccionar suscripciones visibles"
+            disabled={filteredSubscriptions.length === 0}
+            icon="checkbox-multiple-marked-outline"
+            iconColor={
+              filteredSubscriptions.length === 0
+                ? colors.disabled
+                : colors.mutedText
+            }
+            size={18}
+            style={styles.listSectionButton}
+            onPress={selectVisibleSubscriptions}
+          />
+          <IconButton
+            accessibilityLabel="Deseleccionar suscripciones visibles"
+            disabled={filteredSubscriptions.length === 0}
+            icon="checkbox-multiple-blank-outline"
+            iconColor={
+              filteredSubscriptions.length === 0
+                ? colors.disabled
+                : colors.mutedText
+            }
+            size={18}
+            style={styles.listSectionButton}
+            onPress={deselectVisibleSubscriptions}
+          />
+        </View>
+      </View>
+    </View>
+  ), [
+    colors.disabled,
+    colors.mutedText,
+    deselectVisibleSubscriptions,
+    filteredSubscriptions.length,
+    selectVisibleSubscriptions,
+    styles.listHeader,
+    styles.listSectionButton,
+    styles.listSectionControls,
+    styles.listSectionHeader,
+    styles.listSectionTitle,
+    subscriptionsOverview,
+  ]);
 
   return (
     <View style={styles.safeArea}>
       <AppHeader
-        title={stableNotebookName ?? 'Meowney'}
+        title={stableNotebookName ?? "Meowney"}
         left={
           <AppHeaderActionButton
             accessibilityLabel="Regresar a Mi libreta"
             icon="arrow-left"
-            onPress={() => router.replace('/more')}
+            onPress={() => router.back()}
           />
         }
       />
@@ -512,37 +822,27 @@ export function SubscriptionsScreen() {
             <FlatList
               style={styles.list}
               data={isLoading ? [] : filteredSubscriptions}
-              keyExtractor={(item) => item.id}
+              keyExtractor={keyExtractor}
               renderItem={renderSubscription}
-              ListHeaderComponent={subscriptionsOverview}
-              contentContainerStyle={!isLoading && filteredSubscriptions.length ? styles.listContent : styles.emptyContent}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              ListEmptyComponent={
-                isLoading ? (
-                  <AppLoadingState colors={colors} label="Cargando suscripciones" />
-                ) : (
-                  <AppEmptyState
-                    icon="calendar-sync-outline"
-                    title={loadError ? 'No se pudieron cargar las suscripciones' : 'Aun no hay suscripciones'}
-                    message={
-                      loadError
-                        ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Aqui apareceran pagos que se repiten, como streaming, renta o servicios. Agrega una suscripcion para saber cuanto se junta cada mes y desde que cuenta sale.'
-                    }
-                    style={styles.emptyState}
-                  />
-                )
+              ListHeaderComponent={subscriptionListHeader}
+              contentContainerStyle={
+                !isLoading && filteredSubscriptions.length
+                  ? styles.listContent
+                  : styles.emptyContent
               }
+              ItemSeparatorComponent={renderSeparator}
+              ListEmptyComponent={renderEmptyComponent}
               showsVerticalScrollIndicator={false}
             />
-            <View style={styles.bottomAction}>
+            <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
                 accessibilityLabel="Agregar suscripcion"
+                disabled={data.categories.length === 0}
                 label="Agregar suscripcion"
                 style={styles.addButton}
                 onPress={openCreate}
               />
-            </View>
+            </AppBottomActionDrawer>
           </>
         )}
       </AppScreen>
@@ -560,22 +860,51 @@ export function SubscriptionsScreen() {
           {infoSubscription ? (
             <>
               <AppInfoLine label="Nombre" value={infoSubscription.name} />
-              <AppInfoLine label="Monto" value={formatAmount(infoSubscription.amount, data.currency)} />
-              <AppInfoLine label="Frecuencia" value={formatFrequency(infoSubscription.paymentFrequency)} />
-              <AppInfoLine label="Promedio mensual" value={formatAmount(getMonthlyEquivalent(infoSubscription), data.currency)} />
-              <AppInfoLine label="Notas" value={infoSubscription.notes || 'Sin notas'} />
-              <AppInfoLine label="Creacion" value={formatDateTime(infoSubscription.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDateTime(infoSubscription.updatedAt)} />
+              <AppInfoLine
+                label="Categoria"
+                value={infoSubscription.categoryName}
+              />
+              <AppInfoLine
+                label="Monto"
+                value={formatAmount(infoSubscription.amount, data.currency)}
+              />
+              <AppInfoLine
+                label="Frecuencia"
+                value={formatFrequency(infoSubscription.paymentFrequency)}
+              />
+              <AppInfoLine
+                label="Promedio mensual"
+                value={formatAmount(
+                  getMonthlyEquivalent(infoSubscription),
+                  data.currency,
+                )}
+              />
+              <AppInfoLine
+                label="Notas"
+                value={infoSubscription.notes || "Sin notas"}
+              />
+              <AppInfoLine
+                label="Creacion"
+                value={formatDateTime(infoSubscription.createdAt)}
+              />
+              <AppInfoLine
+                label="Actualizacion"
+                value={formatDateTime(infoSubscription.updatedAt)}
+              />
             </>
           ) : null}
         </AppContentDialog>
 
         <SubscriptionFormDialog
+          categories={data.categories}
           colorOptions={colorOptions}
           showAmountError={showAmountError}
+          showCategoryError={showCategoryError}
           showNameError={showNameError}
           styles={styles}
-          title={editingSubscription ? 'Editar suscripcion' : 'Agregar suscripcion'}
+          title={
+            editingSubscription ? "Editar suscripcion" : "Agregar suscripcion"
+          }
           values={formValues}
           visible={isFormOpen}
           onCancel={closeForm}
@@ -593,14 +922,19 @@ export function SubscriptionsScreen() {
         />
       </Portal>
 
-      <AppMeowneySnackbar message={snackbarMessage} onDismiss={() => setSnackbarMessage(null)} />
+      <AppMeowneySnackbar
+        message={snackbarMessage}
+        onDismiss={() => setSnackbarMessage(null)}
+      />
     </View>
   );
 }
 
 type SubscriptionFormDialogProps = {
+  categories: Category[];
   colorOptions: string[];
   showAmountError: boolean;
+  showCategoryError: boolean;
   showNameError: boolean;
   styles: ReturnType<typeof createStyles>;
   title: string;
@@ -612,8 +946,10 @@ type SubscriptionFormDialogProps = {
 };
 
 function SubscriptionFormDialog({
+  categories,
   colorOptions,
   showAmountError,
+  showCategoryError,
   showNameError,
   styles,
   title,
@@ -623,8 +959,20 @@ function SubscriptionFormDialog({
   onChange,
   onSave,
 }: SubscriptionFormDialogProps) {
+  const selectedCategory = getSelectedCategory(categories, values.categoryId);
+  const selectedParentCategory = getSelectedParentCategory(categories, values.categoryId);
+  const selectedSubcategory = getSelectedSubcategory(categories, values.categoryId);
+  const parentOptions = getPrimaryCategories(categories, "expense");
+  const subcategoryOptions = getSubcategories(categories, selectedParentCategory?.id);
+
   return (
-    <AppFormDialog visible={visible} title={title} contentContainerStyle={styles.form} onCancel={onCancel} onSave={onSave}>
+    <AppFormDialog
+      visible={visible}
+      title={title}
+      contentContainerStyle={styles.form}
+      onCancel={onCancel}
+      onSave={onSave}
+    >
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>NOMBRE</Text>
         <TextInput
@@ -634,8 +982,58 @@ function SubscriptionFormDialog({
           onChangeText={(name) => onChange({ ...values, name })}
           error={showNameError}
         />
-        {showNameError ? <HelperText type="error" visible>Escribe el nombre del pago recurrente.</HelperText> : null}
+        {showNameError ? (
+          <HelperText type="error" visible>
+            Escribe el nombre del pago recurrente.
+          </HelperText>
+        ) : null}
       </View>
+
+      <View style={styles.pickerGroup}>
+        <Text style={styles.pickerLabel}>CATEGORIA</Text>
+        <AppSelectMenu
+          icon="chevron-down"
+          label="Categoria"
+          options={parentOptions.map((category) => ({
+            label: getCategoryDisplayName(categories, category),
+            value: category.id,
+          }))}
+          selectedLabel={selectedParentCategory?.name ?? "Seleccionar"}
+          selectedValue={selectedParentCategory?.id ?? ""}
+          buttonStyle={styles.select}
+          buttonContentStyle={styles.selectContent}
+          menuContentStyle={styles.menuContent}
+          onSelect={(categoryId) => onChange({ ...values, categoryId })}
+        />
+        {showCategoryError ? (
+          <HelperText type="error" visible>
+            Elige la categoria de la suscripcion.
+          </HelperText>
+        ) : null}
+      </View>
+
+      {subcategoryOptions.length > 0 ? (
+        <View style={styles.pickerGroup}>
+          <Text style={styles.pickerLabel}>SUBCATEGORIA</Text>
+          <AppSelectMenu
+            icon="chevron-down"
+            label="Subcategoria"
+            options={[
+              { label: "Sin subcategoria", value: selectedParentCategory?.id ?? "" },
+              ...subcategoryOptions.map((category) => ({
+                label: category.name,
+                value: category.id,
+              })),
+            ]}
+            selectedLabel={selectedSubcategory?.name ?? "Sin subcategoria"}
+            selectedValue={selectedCategory?.id ?? ""}
+            buttonStyle={styles.select}
+            buttonContentStyle={styles.selectContent}
+            menuContentStyle={styles.menuContent}
+            onSelect={(categoryId) => onChange({ ...values, categoryId })}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>MONTO</Text>
@@ -647,7 +1045,11 @@ function SubscriptionFormDialog({
           onChangeText={(amount) => onChange({ ...values, amount })}
           error={showAmountError}
         />
-        {showAmountError ? <HelperText type="error" visible>Escribe cuanto cuesta, mayor a cero.</HelperText> : null}
+        {showAmountError ? (
+          <HelperText type="error" visible>
+            Escribe cuanto cuesta, mayor a cero.
+          </HelperText>
+        ) : null}
       </View>
 
       <View style={styles.pickerGroup}>
@@ -661,7 +1063,9 @@ function SubscriptionFormDialog({
           buttonStyle={styles.select}
           buttonContentStyle={styles.selectContent}
           menuContentStyle={styles.menuContent}
-          onSelect={(paymentFrequency) => onChange({ ...values, paymentFrequency })}
+          onSelect={(paymentFrequency) =>
+            onChange({ ...values, paymentFrequency })
+          }
         />
       </View>
 
@@ -705,18 +1109,51 @@ function createStyles(colors: MeowneyColors) {
     summaryHeader: {
       paddingBottom: spacing.md,
     },
+    listHeader: {
+      gap: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    listSectionHeader: {
+      minHeight: 36,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+      paddingHorizontal: spacing.xs,
+    },
+    listSectionTitle: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      textTransform: "uppercase",
+    },
+    listSectionControls: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    listSectionButton: {
+      width: 34,
+      height: 34,
+      margin: 0,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
+    },
     summarySection: {
       gap: spacing.sm,
     },
     summaryTitleRow: {
       minHeight: 24,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: spacing.xs,
     },
     summaryTable: {
-      overflow: 'hidden',
+      overflow: "hidden",
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,
@@ -738,15 +1175,15 @@ function createStyles(colors: MeowneyColors) {
     },
     metricRow: {
       minHeight: 62,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.sm,
     },
     metricIcon: {
       width: 34,
       height: 34,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: radii.navItem,
       backgroundColor: colors.selected,
     },
@@ -772,22 +1209,35 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.bodySize,
       fontWeight: typography.mediumWeight,
       lineHeight: 22,
-      textAlign: 'right',
+      textAlign: "right",
     },
     metricDivider: {
       height: 1,
       backgroundColor: colors.border,
     },
     filterSection: {
-      alignItems: 'stretch',
+      alignItems: "stretch",
+      marginHorizontal: -spacing.lg,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.md,
       gap: 2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      position: "relative",
+      zIndex: 6,
     },
     filterToggle: {
       minHeight: 32,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
       paddingHorizontal: spacing.xs,
+    },
+    filterToggleMain: {
+      minHeight: 28,
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
       borderRadius: radii.button,
     },
     filterTogglePressed: {
@@ -802,11 +1252,20 @@ function createStyles(colors: MeowneyColors) {
     filterToggleSpacer: {
       flex: 1,
     },
+    clearFilterButton: {
+      width: 28,
+      height: 28,
+      margin: 0,
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
+    },
     chevronButton: {
       width: 28,
       height: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: radii.button,
+      backgroundColor: colors.selected,
     },
     filterContextSpacer: {
       height: spacing.sm,
@@ -820,15 +1279,28 @@ function createStyles(colors: MeowneyColors) {
       paddingHorizontal: spacing.xs,
     },
     filterGrid: {
-      width: '100%',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
+      width: "100%",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
       gap: spacing.sm,
     },
     filterGroups: {
-      width: '100%',
+      position: "absolute",
+      top: 34,
+      left: 0,
+      right: 0,
+      width: "100%",
+      zIndex: 7,
+    },
+    filterPanel: {
+      width: "100%",
       gap: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.md,
     },
     filterGroup: {
       gap: spacing.sm,
@@ -840,7 +1312,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
       lineHeight: 16,
       paddingHorizontal: spacing.xs,
-      textTransform: 'uppercase',
+      textTransform: "uppercase",
     },
     filterControl: {
       flexShrink: 0,
@@ -859,28 +1331,26 @@ function createStyles(colors: MeowneyColors) {
     },
     listContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     emptyContent: {
       flexGrow: 1,
-      paddingBottom: spacing.lg,
     },
     subscriptionRow: {
-      minHeight: 78,
-      flexDirection: 'row',
-      alignItems: 'center',
-      overflow: 'hidden',
+      minHeight: 92,
+      flexDirection: "row",
+      alignItems: "center",
+      overflow: "hidden",
       borderWidth: 1,
       borderColor: colors.pressed,
       borderRadius: radii.input,
       backgroundColor: colors.background,
     },
     subscriptionContent: {
-      minHeight: 78,
+      minHeight: 92,
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      columnGap: spacing.sm,
       paddingVertical: spacing.sm + 2,
       paddingLeft: spacing.md,
       paddingRight: spacing.xs,
@@ -891,8 +1361,8 @@ function createStyles(colors: MeowneyColors) {
     subscriptionIconWrap: {
       width: 40,
       height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: radii.input,
     },
     nameCopy: {
@@ -909,13 +1379,21 @@ function createStyles(colors: MeowneyColors) {
     subscriptionMeta: {
       color: colors.mutedText,
       fontSize: typography.bodySmallSize,
-      lineHeight: 20,
+      lineHeight: 18,
+    },
+    subscriptionCategory: {
+      color: colors.mutedText,
+      fontSize: typography.monoLabelSize,
+      fontWeight: typography.mediumWeight,
+      letterSpacing: 0.2,
+      lineHeight: 16,
+      textTransform: "uppercase",
     },
     amountCopy: {
       minWidth: 104,
       maxWidth: 132,
       flexShrink: 0,
-      alignItems: 'flex-end',
+      alignItems: "flex-end",
       gap: 3,
     },
     subscriptionAmount: {
@@ -923,7 +1401,7 @@ function createStyles(colors: MeowneyColors) {
       fontSize: typography.bodySize,
       fontWeight: typography.mediumWeight,
       lineHeight: 22,
-      textAlign: 'right',
+      textAlign: "right",
     },
     selectionState: {
       color: colors.mutedText,
@@ -931,7 +1409,7 @@ function createStyles(colors: MeowneyColors) {
       fontWeight: typography.mediumWeight,
       letterSpacing: 0.2,
       lineHeight: 16,
-      textTransform: 'uppercase',
+      textTransform: "uppercase",
     },
     selectionStateChecked: {
       color: colors.success,
@@ -949,8 +1427,8 @@ function createStyles(colors: MeowneyColors) {
     emptyState: {
       flex: 1,
       minHeight: 240,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       gap: spacing.sm,
       borderWidth: 1,
       borderColor: colors.border,
@@ -960,8 +1438,8 @@ function createStyles(colors: MeowneyColors) {
     },
     missingNotebook: {
       flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       gap: spacing.md,
       borderWidth: 1,
       borderColor: colors.border,
@@ -970,17 +1448,13 @@ function createStyles(colors: MeowneyColors) {
       padding: spacing.lg,
     },
     bottomAction: {
-      alignItems: 'center',
+      alignItems: "center",
+      alignSelf: "stretch",
       marginHorizontal: -spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      marginTop: -spacing.lg,
     },
     addButton: {
-      width: '70%',
+      width: "70%",
     },
     infoDialogContent: {
       gap: spacing.md,
@@ -1007,7 +1481,7 @@ function createStyles(colors: MeowneyColors) {
     },
     selectContent: {
       minHeight: 48,
-      flexDirection: 'row-reverse',
+      flexDirection: "row-reverse",
     },
     menuContent: {
       borderRadius: radii.card,
