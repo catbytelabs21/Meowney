@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Animated,
   PanResponder,
@@ -64,6 +64,8 @@ export function AppDraggableFab({ children, style }: AppDraggableFabProps) {
     clearLongPress();
     canDrag.current = false;
   };
+
+  useEffect(() => clearLongPress, []);
 
   const panResponder = useMemo(
     () =>

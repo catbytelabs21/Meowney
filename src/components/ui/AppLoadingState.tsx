@@ -9,7 +9,7 @@ type AppLoadingStateProps = {
   label?: string;
 };
 
-export function AppLoadingState({ colors, label = 'Cargando informacion' }: AppLoadingStateProps) {
+export function AppLoadingState({ colors, label = 'Cargando información' }: AppLoadingStateProps) {
   return (
     <View style={styles.container}>
       <ActivityIndicator animating color={colors.primary} size="small" />

@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -21,7 +21,7 @@ type AppCatFabProps = {
 
 export function AppCatFab({ accessibilityLabel, disabled = false, label, onPress, style }: AppCatFabProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const catColor = label ? colors.onPrimary : colors.primary;
   const plusColor = label ? colors.primary : colors.onPrimary;

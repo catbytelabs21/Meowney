@@ -16,7 +16,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Button, Dialog, Surface } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors } from '@/theme/colors';
+import { getMeowneyColors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
@@ -86,7 +86,7 @@ export function AppFormDialog({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const dialogVerticalMargin = Math.max(spacing.lg, Math.max(insets.top, insets.bottom) + spacing.md);
   const dialogHeight = height - dialogVerticalMargin * 2;
   const [isMounted, setIsMounted] = useState(visible);
@@ -235,7 +235,7 @@ export function AppContentDialog({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const dialogVerticalMargin = Math.max(spacing.lg, Math.max(insets.top, insets.bottom) + spacing.md);
   const dialogMaxHeight = height - dialogVerticalMargin * 2;
   const [isMounted, setIsMounted] = useState(visible);
@@ -370,7 +370,7 @@ export function AppConfirmDialog({
   onConfirm,
 }: AppConfirmDialogProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <Dialog visible={visible} onDismiss={onCancel} style={[styles.confirmDialog, { backgroundColor: colors.surface }]}>
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.32)',
+    backgroundColor: getMeowneyColors('dark').modalBackdrop,
   },
   modalBackdropPressable: {
     flex: 1,

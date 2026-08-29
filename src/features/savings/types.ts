@@ -1,4 +1,4 @@
-export type Goal = {
+export type Saving = {
   id: string;
   accountId: string;
   name: string;
@@ -12,6 +12,6 @@ export type Goal = {
   archivedAt: string | null;
 };
 
-export type GoalListItem = Goal & {
+export type SavingListItem = Saving & {
   accountName: string;
 };

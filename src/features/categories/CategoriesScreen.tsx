@@ -46,7 +46,7 @@ import { categoryRepository, type CategoryInput } from '@/database/repositories/
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -104,10 +104,6 @@ function toInput(notebookId: string, values: CategoryFormValues): CategoryInput 
   };
 }
 
-function formatDate(value: string) {
-  return formatAppDateTime(value);
-}
-
 function formatCategoryType(type: CategoryType) {
   return CATEGORY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Gasto';
 }
@@ -132,7 +128,7 @@ export function CategoriesScreen() {
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getCategoryColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
@@ -268,7 +264,7 @@ export function CategoriesScreen() {
       setSnackbarMessage('Etiqueta actualizada para rastrear mejor.');
     } else {
       categoryRepository.create(toInput(activeNotebookId, formValues));
-      setSnackbarMessage('Etiqueta nueva lista para los proximos rastros.');
+      setSnackbarMessage('Etiqueta nueva lista para los próximos rastros.');
     }
 
     closeForm();
@@ -291,15 +287,15 @@ export function CategoriesScreen() {
   const renderEmptyComponent = useCallback(
     () =>
       isLoading ? (
-        <AppLoadingState colors={colors} label="Cargando categorias" />
+        <AppLoadingState colors={colors} label="Cargando categorías" />
       ) : (
         <AppEmptyState
           icon="tag-plus-outline"
-          title={loadError ? 'No se pudieron cargar las categorias' : 'Aun no hay etiquetas'}
+          title={loadError ? 'No se pudieron cargar las categorías' : 'Aún no hay etiquetas'}
           message={
             loadError
-              ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-              : 'Aqui apareceran las etiquetas para ordenar tu dinero. Crea categorias como comida, casa, sueldo o transporte para entender en que se mueve cada peso.'
+              ? 'Intenta entrar de nuevo o revisa que la base de datos esté disponible.'
+              : 'Aquí aparecerán las etiquetas para ordenar tu dinero. Crea categorías como comida, casa, sueldo o transporte para entender en qué se mueve cada peso.'
           }
           style={styles.emptyState}
         />
@@ -316,7 +312,7 @@ export function CategoriesScreen() {
       <Surface style={styles.categoryRow} elevation={0}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ver categoria"
+          accessibilityLabel="Ver categoría"
           onPress={() => setInfoCategory(item)}
           style={({ pressed }) => [styles.categoryContent, pressed && styles.categoryPressed]}
         >
@@ -328,7 +324,7 @@ export function CategoriesScreen() {
               {item.name}
             </Text>
             <Text numberOfLines={1} style={styles.categoryMeta}>
-              {parentCategory ? `Subcategoria de ${parentCategory.name}` : formatCategoryType(item.type)}
+              {parentCategory ? `Subcategoría de ${parentCategory.name}` : formatCategoryType(item.type)}
             </Text>
           </View>
         </Pressable>
@@ -339,7 +335,7 @@ export function CategoriesScreen() {
           contentStyle={styles.menuContent}
           anchor={
             <IconButton
-              accessibilityLabel="Acciones de la categoria"
+              accessibilityLabel="Acciones de la categoría"
               icon="dots-vertical"
               iconColor={colors.mutedText}
               size={18}
@@ -399,9 +395,8 @@ export function CategoriesScreen() {
       />
       <AppScreen
         eyebrow="CATEGORIAS"
-        title="Etiquetas de rastreo"
-        helpTitle="Para que sirven las categorias?"
-        helpMessage="Las categorias son etiquetas para que Meowney siga el rastro de tus ingresos y gastos. Usalas para saber en que se va el dinero: comida, casa, transporte, sueldo u otros movimientos."
+        helpTitle="¿Para qué sirven las categorías?"
+        helpMessage="Las categorías son etiquetas para que Meowney siga el rastro de tus ingresos y gastos. Úsalas para saber en qué se va el dinero: comida, casa, transporte, sueldo u otros movimientos."
       >
         {!activeNotebookId ? (
           <AppEmptyState
@@ -521,8 +516,8 @@ export function CategoriesScreen() {
             />
             <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
-                accessibilityLabel="Agregar categoria"
-                label="Agregar categoria"
+                accessibilityLabel="Agregar categoría"
+                label="Agregar categoría"
                 style={styles.addButton}
                 onPress={openCreate}
               />
@@ -553,8 +548,8 @@ export function CategoriesScreen() {
                     : 'Sin padre'
                 }
               />
-              <AppInfoLine label="Creacion" value={formatDate(infoCategory.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDate(infoCategory.updatedAt)} />
+              <AppInfoLine label="Creación" value={formatAppDateTime(infoCategory.createdAt)} />
+              <AppInfoLine label="Actualización" value={formatAppDateTime(infoCategory.updatedAt)} />
             </>
           ) : null}
         </AppContentDialog>
@@ -564,7 +559,7 @@ export function CategoriesScreen() {
           editingCategoryId={editingCategory?.id ?? null}
           styles={styles}
           visible={isCreateOpen || Boolean(editingCategory)}
-          title={editingCategory ? 'Editar categoria' : 'Agregar categoria'}
+          title={editingCategory ? 'Editar categoría' : 'Agregar categoría'}
           values={formValues}
           showNameError={showNameError}
           colorOptions={colorOptions}
@@ -575,8 +570,8 @@ export function CategoriesScreen() {
 
         <AppConfirmDialog
           visible={Boolean(deleteCategory)}
-          title="Eliminar categoria"
-          message="Esta accion archivara la categoria y dejara de mostrarse en el listado."
+          title="Eliminar categoría"
+          message="Esta acción archivará la categoría y dejará de mostrarse en el listado."
           onCancel={() => setDeleteCategory(null)}
           onConfirm={confirmDelete}
         />
@@ -704,7 +699,7 @@ function CategoryFormDialog({
               />
               {showNameError ? (
                 <HelperText type="error" visible>
-                  Escribe un nombre para esta categoria.
+                  Escribe un nombre para esta categoría.
                 </HelperText>
               ) : null}
             </View>
@@ -728,7 +723,7 @@ function CategoryFormDialog({
               <Text style={styles.pickerLabel}>SUBCATEGORIA DE</Text>
               <AppSelectMenu
                 icon="chevron-down"
-                label="Subcategoria de"
+                label="Subcategoría de"
                 options={[
                   { label: 'Ninguna', value: '' },
                   ...parentOptions.map((category) => ({

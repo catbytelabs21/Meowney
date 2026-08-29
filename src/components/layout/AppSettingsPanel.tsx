@@ -16,7 +16,7 @@ import { AppConfirmDialog } from '@/components/ui/AppFormDialog';
 import { appDataRepository } from '@/database/repositories/app-data.repository';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { type LaunchPreference, type ThemePreference, useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
@@ -27,7 +27,7 @@ const DELETE_DATA_MINIMUM_FEEDBACK_MS = 320;
 export function AppSettingsPanel() {
   const colorScheme = useMeowneyColorScheme();
   const { width: windowWidth } = useWindowDimensions();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isOpen = useAppStore((state) => state.isSettingsPanelOpen);
   const clearSelectedNotebookId = useAppStore((state) => state.clearSelectedNotebookId);
@@ -220,7 +220,7 @@ export function AppSettingsPanel() {
         <AppConfirmDialog
           visible={isDeleteDataDialogOpen}
           title="Eliminar datos"
-          message="Esta accion borrara permanentemente libretas, cuentas, categorias, presupuestos, ahorros, movimientos y transferencias. No se puede deshacer."
+          message="Esta acción borrará permanentemente libretas, cuentas, categorías, presupuestos, ahorros, movimientos y transferencias. No se puede deshacer."
           cancelLabel="Cancelar"
           confirmLabel="Eliminar todo"
           confirmTextColor={colors.error}
@@ -403,7 +403,7 @@ function createStyles(colors: MeowneyColors) {
       right: 0,
       bottom: 0,
       left: 0,
-      backgroundColor: 'rgba(0,0,0,0.42)',
+      backgroundColor: colors.backdrop,
     },
     backdropPressable: {
       flex: 1,
@@ -572,7 +572,7 @@ function createStyles(colors: MeowneyColors) {
       zIndex: 30,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: 'rgba(0,0,0,0.34)',
+      backgroundColor: colors.processingOverlay,
     },
     processingCard: {
       minWidth: 180,

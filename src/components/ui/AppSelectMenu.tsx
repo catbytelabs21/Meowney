@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 import { Button, IconButton, Menu, Tooltip } from "react-native-paper";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
-import { darkColors, lightColors } from "@/theme/colors";
+import { getMeowneyColors } from "@/theme/colors";
 
 type AppSelectMenuOption<Value extends string> = {
   label: string;
@@ -38,7 +38,7 @@ export function AppSelectMenu<Value extends string>({
   onSelect,
 }: AppSelectMenuProps<Value>) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const [isOpen, setIsOpen] = useState(false);
 
   const anchorNode =

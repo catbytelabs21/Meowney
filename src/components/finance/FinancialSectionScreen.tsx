@@ -63,7 +63,7 @@ import {
 } from "@/database/repositories/transfer.repository";
 import { useDeferredQuery } from "@/hooks/useDeferredQuery";
 import { useAppStore } from "@/stores/app.store";
-import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { getMeowneyColors, type MeowneyColors } from "@/theme/colors";
 import { motion } from "@/theme/motion";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
@@ -77,6 +77,7 @@ import {
   getSubcategories,
 } from "@/utils/categoryHierarchy";
 import { formatAppDate } from "@/utils/dateFormat";
+import { formatMoneyFromCents, parseMoneyToCents } from "@/utils/moneyFormat";
 import type { Account } from "@/features/accounts/types";
 import type { AccountBalance } from "@/features/balance/types";
 import type { BudgetListItem } from "@/features/budgets/types";
@@ -130,11 +131,6 @@ type BalanceTrendPoint = {
 
 type BalanceChartMode = "distribution" | "trend";
 type MovementSummaryRange = "month" | "all";
-type MovementChartMode =
-  | "cashflow"
-  | "incomeCategories"
-  | "expenseCategories"
-  | "transfers";
 type MovementPeriod =
   | "last7"
   | "last30"
@@ -371,12 +367,10 @@ function formatTrendMonth(value: string) {
 }
 
 function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat("es-MX", {
-    currency,
-    style: "currency",
+  return formatMoneyFromCents(amount, currency, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount / 100);
+  });
 }
 
 function formatCompactAmount(amount: number) {
@@ -400,14 +394,7 @@ function formatAccountCount(count: number) {
 }
 
 function parseAmount(value: string) {
-  const normalized = value.replace(",", ".").trim();
-  const number = Number(normalized);
-
-  if (!Number.isFinite(number) || number <= 0) {
-    return null;
-  }
-
-  return Math.round(number * 100);
+  return parseMoneyToCents(value);
 }
 
 function getMonthEndDateKey(year: number, monthIndex: number) {
@@ -714,7 +701,7 @@ export function FinancialSectionScreen({
 }: FinancialSectionScreenProps) {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const today = useMemo(() => toDateKey(new Date()), []);
   const [selectedSection, setSelectedSection] =
@@ -770,8 +757,6 @@ export function FinancialSectionScreen({
     useState<Record<string, number>>({});
   const [balanceChartMode, setBalanceChartMode] =
     useState<BalanceChartMode>("distribution");
-  const [movementChartMode, setMovementChartMode] =
-    useState<MovementChartMode>("cashflow");
   const [movementSummaryRange, setMovementSummaryRange] =
     useState<MovementSummaryRange>("month");
   const [movementSummaryMonth, setMovementSummaryMonth] = useState(
@@ -1002,7 +987,7 @@ export function FinancialSectionScreen({
   );
   const selectedCategoryLabel = summarizeSelection(
     categoryFilters,
-    "Todas las categorias",
+    "Todas las categorías",
     categoryOptions,
   );
   const activeSection = section ?? selectedSection;
@@ -1363,21 +1348,6 @@ export function FinancialSectionScreen({
     );
   }, []);
 
-  const cycleMovementChart = useCallback(() => {
-    const modes: MovementChartMode[] = [
-      "cashflow",
-      "incomeCategories",
-      "expenseCategories",
-      "transfers",
-    ];
-
-    setMovementChartMode((current) => {
-      const currentIndex = modes.indexOf(current);
-
-      return modes[(currentIndex + 1) % modes.length];
-    });
-  }, []);
-
   const showAllMovementSummary = useCallback(() => {
     setMovementSummaryRange("all");
   }, []);
@@ -1446,8 +1416,8 @@ export function FinancialSectionScreen({
       ) : (
         <AppEmptyState
           icon="paw-outline"
-          title="Sin rastros todavia"
-          message="Aqui apareceran tus ingresos, gastos y movimientos entre cuentas. Registra el primero para que Meowney empiece a seguir el rastro de esta libreta."
+          title="Sin rastros todavía"
+          message="Aquí aparecerán tus ingresos, gastos y movimientos entre cuentas. Registra el primero para que Meowney empiece a seguir el rastro de esta libreta."
           style={styles.emptyPanel}
         />
       ),
@@ -1499,7 +1469,7 @@ export function FinancialSectionScreen({
       return (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ver mas movimientos"
+          accessibilityLabel="Ver más movimientos"
           onPress={() => loadMoreMovementsForMonth(item.monthKey)}
           style={({ pressed }) => [
             styles.loadMoreRow,
@@ -1511,7 +1481,7 @@ export function FinancialSectionScreen({
             size={18}
             color={colors.text}
           />
-          <Text style={styles.loadMoreText}>Ver mas movimientos</Text>
+          <Text style={styles.loadMoreText}>Ver más movimientos</Text>
         </Pressable>
       );
     }
@@ -1659,15 +1629,14 @@ export function FinancialSectionScreen({
         eyebrow={activeSection === "balance" ? "MI DINERO" : "MOVIMIENTOS"}
         helpTitle={
           activeSection === "balance"
-            ? "Para que sirve Mi dinero?"
-            : "Para que sirven los movimientos?"
+            ? "Para qué sirve Mi dinero?"
+            : "Para qué sirven los movimientos?"
         }
         helpMessage={
           activeSection === "balance"
-            ? "Mi dinero junta los saldos de tus cuentas para mostrar cuanto tienes en esta libreta y en que bolsillos esta guardado."
-            : "Movimientos es el rastro de huellas de tu dinero. Aqui Meowney registra ingresos, gastos y transferencias para que sepas que paso, cuando paso y en que cuenta."
+            ? "Mi dinero junta los saldos de tus cuentas para mostrar cuánto tienes en esta libreta y en qué bolsillos está guardado."
+            : "Movimientos es el rastro de huellas de tu dinero. Aquí Meowney registra ingresos, gastos y transferencias para que sepas qué pasó, cuándo pasó y en qué cuenta."
         }
-        title={activeSection === "balance" ? "Mi dinero" : "Movimientos"}
       />
     </View>
   );
@@ -1962,7 +1931,6 @@ export function FinancialSectionScreen({
     data.currency,
     earliestMovementSummaryMonth,
     latestMovementSummaryMonth,
-    movementChartMode,
     movementSummary,
     movementSummaryMonth,
     movementSummaryRange,
@@ -1970,7 +1938,6 @@ export function FinancialSectionScreen({
     showNextMovementSummaryMonth,
     showPreviousMovementSummaryMonth,
     styles,
-    summarizedMovements,
   ]);
 
   const listHeaderComponent = useMemo(
@@ -2015,7 +1982,11 @@ export function FinancialSectionScreen({
           showsVerticalScrollIndicator={false}
         />
         {activeSection === "movements" ? (
-          <AppBottomActionDrawer style={styles.bottomAction} onClose={closeCreateMenu}>
+          <AppBottomActionDrawer
+            contentStyle={styles.bottomActionContent}
+            style={styles.bottomAction}
+            onClose={closeCreateMenu}
+          >
             {isCreateMenuMounted ? (
               <Animated.View
                 style={[styles.fabMenuWrap, createMenuAnimatedStyle]}
@@ -2181,8 +2152,8 @@ export function FinancialSectionScreen({
                 value={infoMovement.categoryName ?? "Transferencia"}
               />
               <AppInfoLine
-                label="Descripcion"
-                value={infoMovement.description || "Sin descripcion"}
+                label="Descripción"
+                value={infoMovement.description || "Sin descripción"}
               />
               {isActiveRecurringMovement(infoMovement) ? (
                 <AppInfoLine
@@ -2203,7 +2174,7 @@ export function FinancialSectionScreen({
         <AppConfirmDialog
           visible={Boolean(deleteMovement)}
           title="Eliminar movimiento"
-          message="Esta accion archivara el movimiento y dejara de mostrarse."
+          message="Esta acción archivará el movimiento y dejará de mostrarse."
           onCancel={() => setDeleteMovement(null)}
           onConfirm={confirmDelete}
         />
@@ -2245,7 +2216,7 @@ function RecurringMovementScopeDialog({
       <Dialog.Content>
         <Text style={styles.scopeDialogText}>
           Este movimiento pertenece a una serie recurrente. Puedes aplicar la
-          accion solo a este movimiento, o a este y los futuros que sigan dentro
+          acción solo a este movimiento, o a este y los futuros que sigan dentro
           de la serie.
         </Text>
         <Text style={styles.scopeDialogHint}>
@@ -2480,7 +2451,7 @@ function MovementFormDialog({
             label="CATEGORIA"
             menuOpen={categoryMenuOpen}
             selectedLabel={
-              selectedParentCategory?.name ?? "Seleccionar categoria"
+              selectedParentCategory?.name ?? "Seleccionar categoría"
             }
             styles={styles}
             onDismiss={() => setCategoryMenuOpen(false)}
@@ -2495,10 +2466,10 @@ function MovementFormDialog({
               categories={subcategoryOptions}
               colors={colors}
               emptyValue={selectedParentCategory?.id}
-              emptyLabel="Sin subcategoria"
+              emptyLabel="Sin subcategoría"
               label="SUBCATEGORIA"
               menuOpen={subcategoryMenuOpen}
-              selectedLabel={selectedSubcategory?.name ?? "Sin subcategoria"}
+              selectedLabel={selectedSubcategory?.name ?? "Sin subcategoría"}
               styles={styles}
               onDismiss={() => setSubcategoryMenuOpen(false)}
               onOpen={() => setSubcategoryMenuOpen(true)}
@@ -2536,7 +2507,7 @@ function MovementFormDialog({
                         styles.budgetRemainingNegative,
                     ]}
                   >
-                    Quedaria {formatAmount(remainingAmount ?? 0, currency)}
+                    Quedaría {formatAmount(remainingAmount ?? 0, currency)}
                   </Text>
                 </Surface>
               ) : null}
@@ -2549,7 +2520,7 @@ function MovementFormDialog({
         <HelperText type="error" visible>
           {isTransfer
             ? "Elige una cuenta de origen y otra de destino."
-            : "Elige la cuenta y la categoria del movimiento."}
+            : "Elige la cuenta y la categoría del movimiento."}
         </HelperText>
       ) : null}
 
@@ -2558,11 +2529,10 @@ function MovementFormDialog({
         <AppDescriptionInput
           placeholder={
             isTransfer
-              ? "Ej. Pase dinero a ahorros"
-              : "Ej. Supermercado, nomina o gasolina"
+              ? "Ej. Pasé dinero a ahorros"
+              : "Ej. Supermercado, nómina o gasolina"
           }
           value={values.description}
-          scrollRef={formScrollRef}
           onChangeText={(description) => onChange({ ...values, description })}
         />
       </View>
@@ -2673,7 +2643,7 @@ function getRecurrenceFrequencyLabel(value: RecurrenceFrequency) {
 
 function getRecurrenceIntervalLabel(value: RecurrenceFrequency) {
   if (value === "daily") {
-    return "dia(s)";
+    return "día(s)";
   }
 
   if (value === "weekly") {
@@ -3129,340 +3099,6 @@ function MovementSummaryStat({
   );
 }
 
-type MovementChartCarouselProps = {
-  colors: MeowneyColors;
-  currency: string;
-  mode: MovementChartMode;
-  movements: MovementItem[];
-  styles: ReturnType<typeof createStyles>;
-  onNext: () => void;
-  onPrevious: () => void;
-};
-
-function getMovementChartTitle(mode: MovementChartMode) {
-  if (mode === "cashflow") {
-    return "Ingresos vs gastos";
-  }
-
-  if (mode === "incomeCategories") {
-    return "Categorías de ingresos";
-  }
-
-  if (mode === "expenseCategories") {
-    return "Categorías de gastos";
-  }
-
-  return "Transferencias";
-}
-
-function MovementChartCarousel({
-  colors,
-  currency,
-  mode,
-  movements,
-  styles,
-  onNext,
-  onPrevious,
-}: MovementChartCarouselProps) {
-  const title = mode === "cashflow" ? "Ingresos vs gastos" : "Categorías";
-
-  return (
-    <View style={styles.balanceSection}>
-      <View style={styles.balanceSectionHeader}>
-        <Text style={styles.balanceSectionTitle}>
-          {getMovementChartTitle(mode)}
-        </Text>
-        <View style={styles.balanceChartControls}>
-          <IconButton
-            accessibilityLabel="Grafica anterior"
-            icon="chevron-left"
-            iconColor={colors.mutedText}
-            size={18}
-            style={[styles.chevronButton, styles.balanceChartButton]}
-            onPress={onPrevious}
-          />
-          <IconButton
-            accessibilityLabel="Grafica siguiente"
-            icon="chevron-right"
-            iconColor={colors.mutedText}
-            size={18}
-            style={[styles.chevronButton, styles.balanceChartButton]}
-            onPress={onNext}
-          />
-        </View>
-      </View>
-      <Surface style={styles.distributionCard} elevation={0}>
-        {mode === "cashflow" ? (
-          <MovementCashflowChart
-            colors={colors}
-            currency={currency}
-            movements={movements}
-            styles={styles}
-          />
-        ) : mode === "incomeCategories" || mode === "expenseCategories" ? (
-          <MovementCategoryTreemap
-            colors={colors}
-            movementType={mode === "incomeCategories" ? "income" : "expense"}
-            movements={movements}
-            styles={styles}
-          />
-        ) : (
-          <MovementTransferRoutesChart
-            colors={colors}
-            currency={currency}
-            movements={movements}
-            styles={styles}
-          />
-        )}
-      </Surface>
-    </View>
-  );
-}
-
-type MovementCashflowChartProps = {
-  colors: MeowneyColors;
-  currency: string;
-  movements: MovementItem[];
-  styles: ReturnType<typeof createStyles>;
-};
-
-function MovementCashflowChart({
-  colors,
-  currency,
-  movements,
-  styles,
-}: MovementCashflowChartProps) {
-  const income = movements
-    .filter((movement) => movement.type === "income")
-    .reduce((sum, movement) => sum + movement.amount, 0);
-  const expense = movements
-    .filter((movement) => movement.type === "expense")
-    .reduce((sum, movement) => sum + movement.amount, 0);
-  const maxAmount = Math.max(income, expense);
-  const rows = [
-    { amount: income, color: colors.success, label: "Ingresos" },
-    { amount: expense, color: colors.error, label: "Gastos" },
-  ];
-
-  if (maxAmount <= 0) {
-    return (
-      <View style={styles.distributionChartFrame}>
-        <Text style={styles.distributionEmpty}>
-          Sin rastros de ingresos o gastos para comparar.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.movementCashflowChart}>
-      {rows.map((row) => (
-        <View key={row.label} style={styles.movementCashflowRow}>
-          <View style={styles.movementCashflowRowHeader}>
-            <Text style={styles.movementCashflowLabel}>{row.label}</Text>
-            <Text style={styles.movementCashflowAmount}>
-              {formatAmount(row.amount, currency)}
-            </Text>
-          </View>
-          <View style={styles.movementCashflowTrack}>
-            <View
-              style={[
-                styles.movementCashflowBar,
-                {
-                  backgroundColor: row.color,
-                  width: `${Math.max(4, (row.amount / maxAmount) * 100)}%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-type MovementCategoryTreemapProps = {
-  colors: MeowneyColors;
-  movementType: "income" | "expense";
-  movements: MovementItem[];
-  styles: ReturnType<typeof createStyles>;
-};
-
-function MovementCategoryTreemap({
-  colors,
-  movementType,
-  movements,
-  styles,
-}: MovementCategoryTreemapProps) {
-  const [chartWidth, setChartWidth] = useState(0);
-  const categoryTotals = movements
-    .filter(
-      (movement) => movement.type === movementType && movement.categoryName,
-    )
-    .reduce<Map<string, number>>((totals, movement) => {
-      const category = movement.categoryName ?? "Sin categoría";
-      totals.set(category, (totals.get(category) ?? 0) + movement.amount);
-      return totals;
-    }, new Map());
-  const distribution = Array.from(categoryTotals.entries()).map(
-    ([label, value], index) => ({
-      color: getFallbackDistributionColor(colors, index),
-      id: label,
-      label,
-      value,
-    }),
-  );
-  const total = distribution.reduce((sum, item) => sum + item.value, 0);
-  const chartHeight = BALANCE_CHART_CONTENT_HEIGHT;
-  const tiles =
-    chartWidth > 0
-      ? buildDistributionTreemap(distribution, chartWidth, chartHeight, total)
-      : [];
-
-  if (total <= 0) {
-    return (
-      <View style={styles.distributionChartFrame}>
-        <Text style={styles.distributionEmpty}>
-          Sin etiquetas suficientes para distribuir.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={styles.distributionChartFrame}
-      onLayout={(event) => setChartWidth(event.nativeEvent.layout.width)}
-    >
-      {tiles.map((tile) => {
-        const showName = tile.width >= 88 && tile.height >= 48;
-        const showPercentage = tile.width >= 46 && tile.height >= 28;
-        const textColor = getReadableChartTextColor(tile.item.color, colors);
-
-        return (
-          <View
-            key={tile.item.id}
-            style={[
-              styles.distributionTreemapTile,
-              {
-                backgroundColor: tile.item.color,
-                height: Math.max(0, tile.height - 2),
-                left: tile.x + 1,
-                top: tile.y + 1,
-                width: Math.max(0, tile.width - 2),
-              },
-            ]}
-          >
-            {showName ? (
-              <>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.distributionTreemapTitle,
-                    { color: textColor },
-                  ]}
-                >
-                  {tile.item.label}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.distributionTreemapPercent,
-                    { color: textColor },
-                  ]}
-                >
-                  {tile.percentage}%
-                </Text>
-              </>
-            ) : showPercentage ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.distributionTreemapPercent,
-                  { color: textColor },
-                ]}
-              >
-                {tile.percentage}%
-              </Text>
-            ) : null}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-type MovementTransferRoutesChartProps = {
-  colors: MeowneyColors;
-  currency: string;
-  movements: MovementItem[];
-  styles: ReturnType<typeof createStyles>;
-};
-
-function MovementTransferRoutesChart({
-  colors,
-  currency,
-  movements,
-  styles,
-}: MovementTransferRoutesChartProps) {
-  const routeTotals = movements
-    .filter(
-      (movement) => movement.type === "transfer" && movement.toAccountName,
-    )
-    .reduce<Map<string, number>>((totals, movement) => {
-      const route = `${movement.accountName} → ${movement.toAccountName}`;
-      totals.set(route, (totals.get(route) ?? 0) + movement.amount);
-      return totals;
-    }, new Map());
-  const rows = Array.from(routeTotals.entries())
-    .map(([label, amount]) => ({ amount, label }))
-    .sort((first, second) => second.amount - first.amount)
-    .slice(0, 4);
-  const maxAmount = rows.reduce((max, row) => Math.max(max, row.amount), 0);
-
-  if (maxAmount <= 0) {
-    return (
-      <View style={styles.distributionChartFrame}>
-        <Text style={styles.distributionEmpty}>
-          Sin saltos entre cuentas para mostrar.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.movementRoutesChart}>
-      {rows.map((row) => (
-        <View key={row.label} style={styles.movementRouteRow}>
-          <View style={styles.movementRouteHeader}>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={styles.movementRouteLabel}
-            >
-              {row.label}
-            </Text>
-            <Text numberOfLines={1} style={styles.movementRouteAmount}>
-              {formatAmount(row.amount, currency)}
-            </Text>
-          </View>
-          <View style={styles.movementCashflowTrack}>
-            <View
-              style={[
-                styles.movementCashflowBar,
-                {
-                  backgroundColor: colors.cyanSignal,
-                  width: `${Math.max(4, (row.amount / maxAmount) * 100)}%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 type BalanceChartCarouselProps = {
   balances: AccountBalance[];
   colors: MeowneyColors;
@@ -3486,7 +3122,7 @@ function BalanceChartCarousel({
   onNext,
   onPrevious,
 }: BalanceChartCarouselProps) {
-  const title = mode === "distribution" ? "Distribucion" : "Evolucion";
+  const title = mode === "distribution" ? "Distribución" : "Evolución";
 
   return (
     <View style={styles.balanceSection}>
@@ -3494,7 +3130,7 @@ function BalanceChartCarousel({
         <Text style={styles.balanceSectionTitle}>{title}</Text>
         <View style={styles.balanceChartControls}>
           <IconButton
-            accessibilityLabel="Grafica anterior"
+            accessibilityLabel="Gráfica anterior"
             icon="chevron-left"
             iconColor={colors.mutedText}
             size={18}
@@ -3502,7 +3138,7 @@ function BalanceChartCarousel({
             onPress={onPrevious}
           />
           <IconButton
-            accessibilityLabel="Grafica siguiente"
+            accessibilityLabel="Gráfica siguiente"
             icon="chevron-right"
             iconColor={colors.mutedText}
             size={18}
@@ -3579,7 +3215,7 @@ function BalanceDistributionChart({
     return (
       <View style={styles.distributionChartFrame}>
         <Text style={styles.distributionEmpty}>
-          Agrega saldo a tus cuentas para ver la distribucion.
+          Agrega saldo a tus cuentas para ver la distribución.
         </Text>
       </View>
     );
@@ -3825,7 +3461,7 @@ function BalanceTrendChart({
   if (points.length === 0) {
     return (
       <Text style={styles.distributionEmpty}>
-        Aun no hay datos para mostrar la evolucion.
+        Aún no hay datos para mostrar la evolución.
       </Text>
     );
   }
@@ -4052,31 +3688,8 @@ function createStyles(colors: MeowneyColors) {
       gap: spacing.lg,
       marginBottom: spacing.lg,
     },
-    headerContent: {
-      gap: spacing.lg,
-      marginBottom: spacing.lg,
-    },
-    movementsHeaderContent: {
-      gap: spacing.lg,
-      marginBottom: spacing.lg,
-    },
     sectionHeaderContent: {
       gap: spacing.md,
-    },
-    header: {
-      gap: spacing.sm,
-    },
-    eyebrow: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-    },
-    title: {
-      color: colors.text,
-      fontSize: typography.headingSize,
-      fontWeight: typography.titleWeight,
-      lineHeight: typography.headingLineHeight,
     },
     segmented: {
       backgroundColor: colors.background,
@@ -4230,73 +3843,6 @@ function createStyles(colors: MeowneyColors) {
       lineHeight: 20,
       paddingHorizontal: spacing.md,
       textAlign: "center",
-    },
-    movementCashflowChart: {
-      height: BALANCE_CHART_CONTENT_HEIGHT,
-      justifyContent: "center",
-      gap: spacing.lg,
-    },
-    movementRoutesChart: {
-      height: BALANCE_CHART_CONTENT_HEIGHT,
-      justifyContent: "center",
-      gap: spacing.sm,
-    },
-    movementRouteRow: {
-      gap: 2,
-    },
-    movementRouteHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-      minWidth: 0,
-    },
-    movementRouteLabel: {
-      flex: 1,
-      minWidth: 0,
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.mediumWeight,
-      lineHeight: 18,
-    },
-    movementRouteAmount: {
-      flexShrink: 0,
-      maxWidth: 112,
-      color: colors.text,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.mediumWeight,
-      lineHeight: 18,
-      textAlign: "right",
-    },
-    movementCashflowRow: {
-      gap: spacing.xs,
-    },
-    movementCashflowRowHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: spacing.md,
-    },
-    movementCashflowLabel: {
-      color: colors.mutedText,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.mediumWeight,
-      lineHeight: 18,
-    },
-    movementCashflowAmount: {
-      color: colors.text,
-      fontSize: typography.bodySmallSize,
-      fontWeight: typography.mediumWeight,
-      lineHeight: 18,
-    },
-    movementCashflowTrack: {
-      height: 18,
-      overflow: "hidden",
-      borderRadius: radii.button,
-      backgroundColor: colors.selected,
-    },
-    movementCashflowBar: {
-      height: "100%",
-      borderRadius: radii.button,
     },
     trendChart: {
       height: BALANCE_CHART_CONTENT_HEIGHT,
@@ -4512,16 +4058,6 @@ function createStyles(colors: MeowneyColors) {
       fontWeight: typography.mediumWeight,
       letterSpacing: 0.2,
     },
-    descriptionInput: {
-      minHeight: 88,
-      backgroundColor: colors.background,
-    },
-    descriptionInputContent: {
-      minHeight: 88,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.sm,
-      textAlignVertical: "top",
-    },
     budgetRemaining: {
       gap: spacing.xs,
       borderWidth: 1,
@@ -4590,6 +4126,9 @@ function createStyles(colors: MeowneyColors) {
       alignSelf: "stretch",
       zIndex: 2,
     },
+    bottomActionContent: {
+      overflow: "visible",
+    },
     addButton: {
       width: "70%",
     },
@@ -4623,19 +4162,6 @@ function createStyles(colors: MeowneyColors) {
     pressed: {
       backgroundColor: colors.pressed,
     },
-    dialog: {
-      borderRadius: radii.card,
-      backgroundColor: colors.surface,
-    },
-    dialogTitle: {
-      color: colors.text,
-      fontWeight: typography.bodyWeight,
-    },
-    dialogText: {
-      color: colors.mutedText,
-      fontSize: typography.bodySize,
-      lineHeight: 24,
-    },
     scopeDialog: {
       borderRadius: radii.card,
       backgroundColor: colors.surface,
@@ -4657,28 +4183,10 @@ function createStyles(colors: MeowneyColors) {
       lineHeight: 20,
       marginTop: spacing.sm,
     },
-    infoList: {
-      gap: spacing.md,
-    },
     infoDialogContent: {
       gap: spacing.md,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-    },
-    infoLine: {
-      gap: spacing.xs,
-    },
-    infoLabel: {
-      color: colors.mutedText,
-      fontSize: typography.monoLabelSize,
-      fontWeight: typography.mediumWeight,
-      letterSpacing: 0.2,
-      textTransform: "uppercase",
-    },
-    infoValue: {
-      color: colors.text,
-      fontSize: typography.bodySize,
-      lineHeight: 22,
     },
     monthGroupHeader: {
       flexDirection: "row",

@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { getCurrentTimestamp } from '@/database/repositories/utils';
 import type { LaunchPreference, ThemePreference } from '@/stores/app.store';
 
 type SettingKey = 'theme_preference' | 'launch_preference';
@@ -16,10 +17,6 @@ const defaultPreferences: AppPreferences = {
   launchPreference: 'notebooks',
   themePreference: 'system',
 };
-
-function nowIso() {
-  return new Date().toISOString();
-}
 
 function getValue(key: SettingKey) {
   return database.getFirstSync<AppSettingRow>(
@@ -43,7 +40,7 @@ function setValue(key: SettingKey, value: string) {
     `,
     key,
     value,
-    nowIso(),
+    getCurrentTimestamp(),
   );
 }
 

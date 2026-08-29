@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -11,7 +11,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
-import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { getMeowneyColors, type MeowneyColors } from "@/theme/colors";
 import { motion } from "@/theme/motion";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
@@ -34,12 +34,12 @@ export function AppBottomActionDrawer({
   onClose,
 }: AppBottomActionDrawerProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [isOpen, setIsOpen] = useState(true);
   const progress = useRef(new Animated.Value(1)).current;
 
-  const setOpen = (nextOpen: boolean) => {
+  const setOpen = useCallback((nextOpen: boolean) => {
     setIsOpen(nextOpen);
 
     if (!nextOpen) {
@@ -52,7 +52,7 @@ export function AppBottomActionDrawer({
       easing: nextOpen ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  };
+  }, [onClose, progress]);
 
   const panResponder = useMemo(
     () =>

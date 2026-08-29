@@ -11,14 +11,17 @@ type IdleTaskCancel = () => void;
 
 type IdleGlobal = typeof globalThis & {
   cancelIdleCallback?: (handle: number) => void;
-  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+  requestIdleCallback?: (
+    callback: (deadline: IdleDeadline) => void,
+    options?: { timeout?: number },
+  ) => number;
 };
 
 function scheduleIdleTask(callback: () => void): IdleTaskCancel {
   const idleGlobal = globalThis as IdleGlobal;
 
   if (typeof idleGlobal.requestIdleCallback === 'function') {
-    const handle = idleGlobal.requestIdleCallback(callback, { timeout: 250 });
+    const handle = idleGlobal.requestIdleCallback(() => callback(), { timeout: 250 });
     return () => idleGlobal.cancelIdleCallback?.(handle);
   }
 
@@ -41,7 +44,7 @@ export function useDeferredQuery<T>(query: () => T, initialData: T): DeferredQue
     setIsLoading(true);
     setError(null);
 
-    const cancelIdleTask = scheduleIdleTask(() => {
+    const cancelQuery = scheduleIdleTask(() => {
       try {
         const result = query();
         if (isActive) {
@@ -60,7 +63,7 @@ export function useDeferredQuery<T>(query: () => T, initialData: T): DeferredQue
 
     return () => {
       isActive = false;
-      cancelIdleTask();
+      cancelQuery();
     };
   }, [query, reloadKey]);
 

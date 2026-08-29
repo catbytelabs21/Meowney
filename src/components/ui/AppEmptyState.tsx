@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Surface, Text } from "react-native-paper";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
-import { darkColors, lightColors } from "@/theme/colors";
+import { getMeowneyColors } from "@/theme/colors";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -18,12 +18,13 @@ type AppEmptyStateProps = {
 
 export function AppEmptyState({
   action,
+  icon,
   message,
   style,
   title,
 }: AppEmptyStateProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <Surface
@@ -38,7 +39,7 @@ export function AppEmptyState({
       elevation={0}
     >
       <View style={styles.iconStage}>
-        <MaterialCommunityIcons name="fish" size={36} color={colors.mutedText} />
+        <MaterialCommunityIcons name={icon} size={36} color={colors.mutedText} />
       </View>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       <Text style={[styles.message, { color: colors.mutedText }]}>{message}</Text>

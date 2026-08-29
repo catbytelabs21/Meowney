@@ -1,7 +1,8 @@
 import { database } from '@/database/database';
-import type { Goal, GoalListItem } from '@/features/goals/types';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
+import type { Saving, SavingListItem } from '@/features/savings/types';
 
-type GoalRow = {
+type SavingRow = {
   id: string;
   account_id: string;
   name: string;
@@ -15,11 +16,11 @@ type GoalRow = {
   archived_at: string | null;
 };
 
-type GoalListRow = GoalRow & {
+type SavingListRow = SavingRow & {
   account_name: string;
 };
 
-export type GoalInput = {
+export type SavingInput = {
   accountId: string;
   color: string | null;
   description: string | null;
@@ -29,7 +30,7 @@ export type GoalInput = {
   targetDate: string;
 };
 
-function mapGoal(row: GoalRow): Goal {
+function mapSaving(row: SavingRow): Saving {
   return {
     id: row.id,
     accountId: row.account_id,
@@ -45,24 +46,16 @@ function mapGoal(row: GoalRow): Goal {
   };
 }
 
-function mapGoalListItem(row: GoalListRow): GoalListItem {
+function mapSavingListItem(row: SavingListRow): SavingListItem {
   return {
-    ...mapGoal(row),
+    ...mapSaving(row),
     accountName: row.account_name,
   };
 }
 
-function createId() {
-  return `goal_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-export const goalRepository = {
+export const savingRepository = {
   listActiveByNotebook(notebookId: string) {
-    const rows = database.getAllSync<GoalListRow>(
+    const rows = database.getAllSync<SavingListRow>(
       `
         SELECT
           g.*,
@@ -77,13 +70,13 @@ export const goalRepository = {
       notebookId,
     );
 
-    return rows.map(mapGoalListItem);
+    return rows.map(mapSavingListItem);
   },
 
-  create(input: GoalInput) {
-    const createdAt = nowIso();
-    const goal: Goal = {
-      id: createId(),
+  create(input: SavingInput) {
+    const createdAt = getCurrentTimestamp();
+    const saving: Saving = {
+      id: createRepositoryId('saving'),
       accountId: input.accountId,
       name: input.name,
       description: input.description,
@@ -113,23 +106,23 @@ export const goalRepository = {
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       `,
-      goal.id,
-      goal.accountId,
-      goal.name,
-      goal.description,
-      goal.targetAmount,
-      goal.targetDate,
-      goal.icon,
-      goal.color,
-      goal.createdAt,
-      goal.updatedAt,
+      saving.id,
+      saving.accountId,
+      saving.name,
+      saving.description,
+      saving.targetAmount,
+      saving.targetDate,
+      saving.icon,
+      saving.color,
+      saving.createdAt,
+      saving.updatedAt,
     );
 
-    return goal;
+    return saving;
   },
 
-  update(id: string, input: GoalInput) {
-    const updatedAt = nowIso();
+  update(id: string, input: SavingInput) {
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -159,7 +152,7 @@ export const goalRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

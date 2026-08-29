@@ -15,28 +15,29 @@ import { AppLoadingState } from '@/components/ui/AppLoadingState';
 import { AppMeowneySnackbar } from '@/components/ui/AppMeowneySnackbar';
 import { AppSelectMenu } from '@/components/ui/AppSelectMenu';
 import {
-  GOAL_ICON_OPTIONS,
-  getGoalColorOptions,
-  type GoalIconName,
-} from '@/constants/goals';
+  SAVING_ICON_OPTIONS,
+  getSavingColorOptions,
+  type SavingIconName,
+} from '@/constants/savings';
 import { accountRepository } from '@/database/repositories/account.repository';
-import { goalRepository, type GoalInput } from '@/database/repositories/goal.repository';
+import { savingRepository, type SavingInput } from '@/database/repositories/saving.repository';
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
-import { formatAppDate, formatAppDateTime } from '@/utils/dateFormat';
+import { formatAppDate, formatAppDateTime, isDateKey } from '@/utils/dateFormat';
+import { formatMoneyFromCents, parseMoneyToCents } from '@/utils/moneyFormat';
 import type { Account } from '@/features/accounts/types';
-import type { GoalListItem } from './types';
+import type { SavingListItem } from './types';
 
 type SavingFormValues = {
   accountId: string;
   color: string;
   description: string;
-  icon: GoalIconName;
+  icon: SavingIconName;
   name: string;
   targetAmount: string;
   targetDate: string;
@@ -45,7 +46,7 @@ type SavingFormValues = {
 type SavingsData = {
   accounts: Account[];
   currency: string;
-  goals: GoalListItem[];
+  savings: SavingListItem[];
 };
 
 function toDateKey(date: Date) {
@@ -73,32 +74,22 @@ function getInitialForm(accounts: Account[], colors: MeowneyColors): SavingFormV
   };
 }
 
-function getFormFromGoal(goal: GoalListItem, colors: MeowneyColors): SavingFormValues {
+function getFormFromSaving(saving: SavingListItem, colors: MeowneyColors): SavingFormValues {
   const fallback = getInitialForm([], colors);
 
   return {
-    accountId: goal.accountId,
-    color: goal.color ?? fallback.color,
-    description: goal.description ?? '',
-    icon: (goal.icon as GoalIconName | null) ?? fallback.icon,
-    name: goal.name,
-    targetAmount: String(goal.targetAmount / 100),
-    targetDate: goal.targetDate,
+    accountId: saving.accountId,
+    color: saving.color ?? fallback.color,
+    description: saving.description ?? '',
+    icon: (saving.icon as SavingIconName | null) ?? fallback.icon,
+    name: saving.name,
+    targetAmount: String(saving.targetAmount / 100),
+    targetDate: saving.targetDate,
   };
 }
 
-function parseAmount(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  const number = Number(normalized);
-  return Number.isFinite(number) && number > 0 ? Math.round(number * 100) : null;
-}
-
-function isDateKey(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
-}
-
-function toInput(values: SavingFormValues): GoalInput | null {
-  const targetAmount = parseAmount(values.targetAmount);
+function toInput(values: SavingFormValues): SavingInput | null {
+  const targetAmount = parseMoneyToCents(values.targetAmount);
 
   if (!values.accountId || !values.name.trim() || !targetAmount || !isDateKey(values.targetDate)) {
     return null;
@@ -115,18 +106,6 @@ function toInput(values: SavingFormValues): GoalInput | null {
   };
 }
 
-function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat('es-MX', { currency, style: 'currency' }).format(amount / 100);
-}
-
-function formatDate(value: string) {
-  return formatAppDate(value);
-}
-
-function formatDateTime(value: string) {
-  return formatAppDateTime(value);
-}
-
 export function SavingsScreen() {
   const { notebookId } = useLocalSearchParams<{ notebookId?: string }>();
   const routeNotebookId = Array.isArray(notebookId) ? notebookId[0] : notebookId;
@@ -135,9 +114,9 @@ export function SavingsScreen() {
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const colorOptions = useMemo(() => getGoalColorOptions(colors), [colors]);
+  const colorOptions = useMemo(() => getSavingColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
     return selectedNotebookName ?? (activeNotebookId ? notebookRepository.getActiveById(activeNotebookId)?.name ?? null : null);
   }, [activeNotebookId, selectedNotebookName]);
@@ -147,13 +126,13 @@ export function SavingsScreen() {
   );
   const loadSavingsData = useCallback((): SavingsData => {
     if (!activeNotebookId) {
-      return { accounts: [], currency: stableCurrency, goals: [] };
+      return { accounts: [], currency: stableCurrency, savings: [] };
     }
 
     return {
       accounts: accountRepository.listActiveByNotebook(activeNotebookId),
       currency: notebookRepository.getActiveById(activeNotebookId)?.currency ?? stableCurrency,
-      goals: goalRepository.listActiveByNotebook(activeNotebookId),
+      savings: savingRepository.listActiveByNotebook(activeNotebookId),
     };
   }, [activeNotebookId, stableCurrency]);
   const {
@@ -161,10 +140,10 @@ export function SavingsScreen() {
     error: loadError,
     isLoading,
     reload,
-  } = useDeferredQuery(loadSavingsData, { accounts: [], currency: stableCurrency, goals: [] });
-  const [infoGoal, setInfoGoal] = useState<GoalListItem | null>(null);
-  const [deleteGoal, setDeleteGoal] = useState<GoalListItem | null>(null);
-  const [editingGoal, setEditingGoal] = useState<GoalListItem | null>(null);
+  } = useDeferredQuery(loadSavingsData, { accounts: [], currency: stableCurrency, savings: [] });
+  const [infoSaving, setInfoSaving] = useState<SavingListItem | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState<SavingListItem | null>(null);
+  const [editingSaving, setEditingSaving] = useState<SavingListItem | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formValues, setFormValues] = useState(() => getInitialForm([], colors));
   const [showAmountError, setShowAmountError] = useState(false);
@@ -181,7 +160,7 @@ export function SavingsScreen() {
 
   const openCreate = () => {
     setFormValues(getInitialForm(data.accounts, colors));
-    setEditingGoal(null);
+    setEditingSaving(null);
     setShowAmountError(false);
     setShowDateError(false);
     setShowNameError(false);
@@ -189,9 +168,9 @@ export function SavingsScreen() {
     setIsFormOpen(true);
   };
 
-  const openEdit = (goal: GoalListItem) => {
-    setFormValues(getFormFromGoal(goal, colors));
-    setEditingGoal(goal);
+  const openEdit = (saving: SavingListItem) => {
+    setFormValues(getFormFromSaving(saving, colors));
+    setEditingSaving(saving);
     setShowAmountError(false);
     setShowDateError(false);
     setShowNameError(false);
@@ -201,25 +180,25 @@ export function SavingsScreen() {
 
   const closeForm = () => {
     setIsFormOpen(false);
-    setEditingGoal(null);
+    setEditingSaving(null);
   };
 
   const saveForm = () => {
     const input = toInput(formValues);
     setShowNameError(!formValues.name.trim());
     setShowAccountError(!formValues.accountId);
-    setShowAmountError(!parseAmount(formValues.targetAmount));
+    setShowAmountError(!parseMoneyToCents(formValues.targetAmount));
     setShowDateError(!isDateKey(formValues.targetDate));
 
     if (!input) {
       return;
     }
 
-    if (editingGoal) {
-      goalRepository.update(editingGoal.id, input);
+    if (editingSaving) {
+      savingRepository.update(editingSaving.id, input);
       setSnackbarMessage('Tesoro actualizado y guardado en la guarida.');
     } else {
-      goalRepository.create(input);
+      savingRepository.create(input);
       setSnackbarMessage('Ahorro agregado y listo para crecer.');
     }
 
@@ -228,43 +207,43 @@ export function SavingsScreen() {
   };
 
   const confirmDelete = () => {
-    if (!deleteGoal) {
+    if (!deleteSaving) {
       return;
     }
 
-    goalRepository.archive(deleteGoal.id);
-    setDeleteGoal(null);
+    savingRepository.archive(deleteSaving.id);
+    setDeleteSaving(null);
     setSnackbarMessage('Tesoro archivado fuera de la guarida.');
     reload();
   };
 
-  const renderGoal = ({ item }: { item: GoalListItem }) => {
-    const iconName = (item.icon as GoalIconName | null) ?? 'piggy-bank-outline';
+  const renderSaving = ({ item }: { item: SavingListItem }) => {
+    const iconName = (item.icon as SavingIconName | null) ?? 'piggy-bank-outline';
     const color = item.color ?? colors.cyanSignal;
 
     return (
       <Surface style={styles.row} elevation={0}>
-        <View style={styles.goalIdentity}>
-          <View style={[styles.goalIconWrap, { backgroundColor: color }]}>
+        <View style={styles.savingIdentity}>
+          <View style={[styles.savingIconWrap, { backgroundColor: color }]}>
             <MaterialCommunityIcons name={iconName} size={20} color={colors.void} />
           </View>
           <View style={styles.nameCopy}>
-            <Text numberOfLines={1} style={styles.goalName}>
+            <Text numberOfLines={1} style={styles.savingName}>
               {item.name}
             </Text>
-            <Text numberOfLines={1} style={styles.goalAmount}>
-              {formatAmount(item.targetAmount, data.currency)}
+            <Text numberOfLines={1} style={styles.savingAmount}>
+              {formatMoneyFromCents(item.targetAmount, data.currency)}
             </Text>
-            <Text numberOfLines={1} style={styles.goalMeta}>
-              {item.accountName} - {formatDate(item.targetDate)}
+            <Text numberOfLines={1} style={styles.savingMeta}>
+              {item.accountName} - {formatAppDate(item.targetDate)}
             </Text>
           </View>
         </View>
 
         <View style={styles.actions}>
-          <IconButton icon="information-outline" mode="contained-tonal" size={18} iconColor={colors.text} containerColor={colors.selected} style={styles.actionButton} onPress={() => setInfoGoal(item)} accessibilityLabel="Ver informacion" />
+          <IconButton icon="information-outline" mode="contained-tonal" size={18} iconColor={colors.text} containerColor={colors.selected} style={styles.actionButton} onPress={() => setInfoSaving(item)} accessibilityLabel="Ver información" />
           <IconButton icon="pencil-outline" mode="contained-tonal" size={18} iconColor={colors.text} containerColor={colors.selected} style={styles.actionButton} onPress={() => openEdit(item)} accessibilityLabel="Editar ahorro" />
-          <IconButton icon="trash-can-outline" mode="contained-tonal" size={18} iconColor={colors.error} containerColor={colors.selected} style={styles.actionButton} onPress={() => setDeleteGoal(item)} accessibilityLabel="Eliminar ahorro" />
+          <IconButton icon="trash-can-outline" mode="contained-tonal" size={18} iconColor={colors.error} containerColor={colors.selected} style={styles.actionButton} onPress={() => setDeleteSaving(item)} accessibilityLabel="Eliminar ahorro" />
         </View>
       </Surface>
     );
@@ -278,9 +257,8 @@ export function SavingsScreen() {
       />
       <AppScreen
         eyebrow="AHORROS"
-        title="Tesoros y reservas"
-        helpTitle="Para que sirven los ahorros?"
-        helpMessage="Los ahorros son tesoros que Meowney te ayuda a apartar para una meta. Puedes seguir cuanto llevas, cuanto falta y en que cuenta esta guardado ese dinero."
+        helpTitle="¿Para qué sirven los ahorros?"
+        helpMessage="Los ahorros son tesoros que Meowney te ayuda a apartar para una meta. Puedes seguir cuánto llevas, cuánto falta y en qué cuenta está guardado ese dinero."
       >
           {!activeNotebookId ? (
             <AppEmptyState
@@ -298,10 +276,10 @@ export function SavingsScreen() {
               <Divider />
               <FlatList
                 style={styles.list}
-                data={isLoading ? [] : data.goals}
+                data={isLoading ? [] : data.savings}
                 keyExtractor={(item) => item.id}
-                renderItem={renderGoal}
-                contentContainerStyle={!isLoading && data.goals.length ? styles.listContent : styles.emptyContent}
+                renderItem={renderSaving}
+                contentContainerStyle={!isLoading && data.savings.length ? styles.listContent : styles.emptyContent}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
                 ListEmptyComponent={
                   isLoading ? (
@@ -309,8 +287,8 @@ export function SavingsScreen() {
                   ) : (
                     <AppEmptyState
                       icon="piggy-bank-outline"
-                      title={loadError ? 'No se pudieron cargar los ahorros' : 'Aun no hay tesoros'}
-                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Aqui apareceran tus metas de ahorro. Crea un tesoro para apartar dinero para viajes, emergencias, compras o cualquier objetivo.'}
+                      title={loadError ? 'No se pudieron cargar los ahorros' : 'Aún no hay tesoros'}
+                      message={loadError ? 'Intenta entrar de nuevo o revisa la base de datos.' : 'Aquí aparecerán tus metas de ahorro. Crea un tesoro para apartar dinero para viajes, emergencias, compras o cualquier objetivo.'}
                       style={styles.emptyState}
                     />
                   )
@@ -332,23 +310,23 @@ export function SavingsScreen() {
 
       <Portal>
         <AppContentDialog
-          visible={Boolean(infoGoal)}
-          title="Informacion"
+          visible={Boolean(infoSaving)}
+          title="Información"
           titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
-          onAction={() => setInfoGoal(null)}
-          onDismiss={() => setInfoGoal(null)}
+          onAction={() => setInfoSaving(null)}
+          onDismiss={() => setInfoSaving(null)}
         >
-          {infoGoal ? (
+          {infoSaving ? (
             <>
-              <AppInfoLine label="Titulo" value={infoGoal.name} />
-              <AppInfoLine label="Descripcion" value={infoGoal.description || 'Sin descripcion'} />
-              <AppInfoLine label="Cuenta" value={infoGoal.accountName} />
-              <AppInfoLine label="Objetivo" value={formatAmount(infoGoal.targetAmount, data.currency)} />
-              <AppInfoLine label="Fecha objetivo" value={formatDate(infoGoal.targetDate)} />
-              <AppInfoLine label="Creacion" value={formatDateTime(infoGoal.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDateTime(infoGoal.updatedAt)} />
+              <AppInfoLine label="Título" value={infoSaving.name} />
+              <AppInfoLine label="Descripción" value={infoSaving.description || 'Sin descripción'} />
+              <AppInfoLine label="Cuenta" value={infoSaving.accountName} />
+              <AppInfoLine label="Objetivo" value={formatMoneyFromCents(infoSaving.targetAmount, data.currency)} />
+              <AppInfoLine label="Fecha objetivo" value={formatAppDate(infoSaving.targetDate)} />
+              <AppInfoLine label="Creación" value={formatAppDateTime(infoSaving.createdAt)} />
+              <AppInfoLine label="Actualización" value={formatAppDateTime(infoSaving.updatedAt)} />
             </>
           ) : null}
         </AppContentDialog>
@@ -361,7 +339,7 @@ export function SavingsScreen() {
           showDateError={showDateError}
           showNameError={showNameError}
           styles={styles}
-          title={editingGoal ? 'Editar ahorro' : 'Agregar ahorro'}
+          title={editingSaving ? 'Editar ahorro' : 'Agregar ahorro'}
           values={formValues}
           visible={isFormOpen}
           onCancel={closeForm}
@@ -370,11 +348,11 @@ export function SavingsScreen() {
         />
 
         <AppConfirmDialog
-          visible={Boolean(deleteGoal)}
+          visible={Boolean(deleteSaving)}
           title="Eliminar ahorro"
-          message="Esta accion archivara el ahorro y dejara de mostrarse."
+          message="Esta acción archivará el ahorro y dejará de mostrarse."
           confirmLabel="Confirmar"
-          onCancel={() => setDeleteGoal(null)}
+          onCancel={() => setDeleteSaving(null)}
           onConfirm={confirmDelete}
         />
       </Portal>
@@ -455,7 +433,7 @@ function SavingFormDialog({
       <View style={styles.pickerGroup}>
         <Text style={styles.pickerLabel}>MONTO OBJETIVO</Text>
         <TextInput mode="outlined" placeholder="Ej. 10000" keyboardType="decimal-pad" value={values.targetAmount} onChangeText={(targetAmount) => onChange({ ...values, targetAmount })} error={showAmountError} />
-        {showAmountError ? <HelperText type="error" visible>Escribe cuanto quieres juntar, mayor a cero.</HelperText> : null}
+        {showAmountError ? <HelperText type="error" visible>Escribe cuánto quieres juntar, mayor a cero.</HelperText> : null}
       </View>
 
       <View style={styles.pickerGroup}>
@@ -468,7 +446,7 @@ function SavingFormDialog({
         <Text style={styles.pickerLabel}>ICONO</Text>
         <AppIconPickerGrid
           columns={5}
-          icons={GOAL_ICON_OPTIONS}
+          icons={SAVING_ICON_OPTIONS}
           selectedIcon={values.icon}
           onSelect={(icon) => onChange({ ...values, icon })}
         />
@@ -523,7 +501,7 @@ function createStyles(colors: MeowneyColors) {
       borderRadius: radii.card,
       backgroundColor: colors.surfaceAlt,
     },
-    goalIdentity: {
+    savingIdentity: {
       minHeight: 84,
       flex: 1,
       flexDirection: 'row',
@@ -532,7 +510,7 @@ function createStyles(colors: MeowneyColors) {
       paddingLeft: spacing.md,
       paddingRight: spacing.sm,
     },
-    goalIconWrap: {
+    savingIconWrap: {
       width: 40,
       height: 40,
       alignItems: 'center',
@@ -540,14 +518,14 @@ function createStyles(colors: MeowneyColors) {
       borderRadius: radii.input,
     },
     nameCopy: { flex: 1, minWidth: 0, gap: spacing.xs },
-    goalName: { color: colors.text, fontSize: typography.bodySize, fontWeight: typography.bodyWeight },
-    goalAmount: {
+    savingName: { color: colors.text, fontSize: typography.bodySize, fontWeight: typography.bodyWeight },
+    savingAmount: {
       color: colors.text,
       fontSize: typography.bodySmallSize,
       fontWeight: typography.mediumWeight,
       lineHeight: 20,
     },
-    goalMeta: { color: colors.mutedText, fontSize: typography.bodySmallSize, lineHeight: 20 },
+    savingMeta: { color: colors.mutedText, fontSize: typography.bodySmallSize, lineHeight: 20 },
     actions: {
       width: 104,
       flexDirection: 'row',

@@ -47,7 +47,7 @@ import {
 import { useDeferredQuery } from "@/hooks/useDeferredQuery";
 import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
 import { useAppStore } from "@/stores/app.store";
-import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { getMeowneyColors, type MeowneyColors } from "@/theme/colors";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -61,6 +61,7 @@ import {
   getSubcategories,
 } from "@/utils/categoryHierarchy";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatMoneyFromCents, parseMoneyToCents } from "@/utils/moneyFormat";
 import type { Category } from "@/features/categories/types";
 import type { SubscriptionFrequency, SubscriptionListItem } from "./types";
 
@@ -130,16 +131,8 @@ function getFormFromSubscription(
   };
 }
 
-function parseAmount(value: string) {
-  const normalized = value.replace(",", ".").trim();
-  const number = Number(normalized);
-  return Number.isFinite(number) && number > 0
-    ? Math.round(number * 100)
-    : null;
-}
-
 function toInput(values: SubscriptionFormValues): SubscriptionInput | null {
-  const amount = parseAmount(values.amount);
+  const amount = parseMoneyToCents(values.amount);
 
   if (!values.name.trim() || !values.categoryId || !amount) {
     return null;
@@ -158,16 +151,6 @@ function toInput(values: SubscriptionFormValues): SubscriptionInput | null {
 
 function getSelectedCategory(categories: Category[], categoryId: string) {
   return categories.find((category) => category.id === categoryId) ?? null;
-}
-
-function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat("es-MX", { currency, style: "currency" }).format(
-    amount / 100,
-  );
-}
-
-function formatDateTime(value: string) {
-  return formatAppDateTime(value);
 }
 
 function formatFrequency(frequency: SubscriptionFrequency) {
@@ -207,7 +190,7 @@ export function SubscriptionsScreen() {
     (state) => state.selectedNotebookName,
   );
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(
     () => getSubscriptionColorOptions(colors),
@@ -360,7 +343,7 @@ export function SubscriptionsScreen() {
   const saveForm = () => {
     const input = toInput(formValues);
     setShowNameError(!formValues.name.trim());
-    setShowAmountError(!parseAmount(formValues.amount));
+    setShowAmountError(!parseMoneyToCents(formValues.amount));
     setShowCategoryError(!formValues.categoryId);
 
     if (!input || !selectedNotebookId) {
@@ -369,10 +352,10 @@ export function SubscriptionsScreen() {
 
     if (editingSubscription) {
       subscriptionRepository.update(editingSubscription.id, input);
-      setSnackbarMessage("Suscripcion actualizada.");
+      setSnackbarMessage("Suscripción actualizada.");
     } else {
       subscriptionRepository.create(selectedNotebookId, input);
-      setSnackbarMessage("Suscripcion agregada.");
+      setSnackbarMessage("Suscripción agregada.");
     }
 
     closeForm();
@@ -386,7 +369,7 @@ export function SubscriptionsScreen() {
 
     subscriptionRepository.archive(deleteSubscription.id);
     setDeleteSubscription(null);
-    setSnackbarMessage("Suscripcion archivada.");
+    setSnackbarMessage("Suscripción archivada.");
     reload();
   };
 
@@ -450,12 +433,12 @@ export function SubscriptionsScreen() {
           title={
             loadError
               ? "No se pudieron cargar las suscripciones"
-              : "Aun no hay suscripciones"
+              : "Aún no hay suscripciones"
           }
           message={
             loadError
               ? "Intenta entrar de nuevo o revisa que la base de datos este disponible."
-              : "Aqui apareceran pagos que se repiten, como streaming, renta o servicios. Agrega una suscripcion para saber cuanto se junta cada mes y desde que cuenta sale."
+              : "Aquí aparecerán pagos que se repiten, como streaming, renta o servicios. Agrega una suscripción para saber cuánto se junta cada mes y desde qué cuenta sale."
           }
           style={styles.emptyState}
         />
@@ -503,7 +486,7 @@ export function SubscriptionsScreen() {
           </View>
           <View style={styles.amountCopy}>
             <Text numberOfLines={1} style={styles.subscriptionAmount}>
-              {formatAmount(item.amount, data.currency)}
+              {formatMoneyFromCents(item.amount, data.currency)}
             </Text>
             <Text
               style={[
@@ -522,7 +505,7 @@ export function SubscriptionsScreen() {
           contentStyle={styles.menuContent}
           anchor={
             <IconButton
-              accessibilityLabel="Acciones de la suscripcion"
+              accessibilityLabel="Acciones de la suscripción"
               icon="dots-vertical"
               iconColor={colors.mutedText}
               size={18}
@@ -691,7 +674,7 @@ export function SubscriptionsScreen() {
               adjustsFontSizeToFit
               style={styles.metricValue}
             >
-              {formatAmount(selectedTotal, data.currency)}
+              {formatMoneyFromCents(selectedTotal, data.currency)}
             </Text>
           </View>
           <View style={styles.metricDivider} />
@@ -714,7 +697,7 @@ export function SubscriptionsScreen() {
               adjustsFontSizeToFit
               style={styles.metricValue}
             >
-              {formatAmount(monthlyAverage, data.currency)}
+              {formatMoneyFromCents(monthlyAverage, data.currency)}
             </Text>
           </View>
         </Surface>
@@ -805,9 +788,8 @@ export function SubscriptionsScreen() {
       />
       <AppScreen
         eyebrow="SUSCRIPCIONES"
-        title="Pagos recurrentes"
-        helpTitle="Para que sirven las suscripciones?"
-        helpMessage="Las suscripciones son pagos que regresan cada cierto tiempo. Meowney las deja en vigilancia para que recuerdes que vienen, cuanto cuestan y desde que cuenta salen."
+        helpTitle="¿Para qué sirven las suscripciones?"
+        helpMessage="Las suscripciones son pagos que regresan cada cierto tiempo. Meowney las deja en vigilancia para que recuerdes que vienen, cuánto cuestan y desde qué cuenta salen."
       >
         {!selectedNotebookId ? (
           <AppEmptyState
@@ -836,9 +818,9 @@ export function SubscriptionsScreen() {
             />
             <AppBottomActionDrawer style={styles.bottomAction}>
               <AppCatFab
-                accessibilityLabel="Agregar suscripcion"
+                accessibilityLabel="Agregar suscripción"
                 disabled={data.categories.length === 0}
-                label="Agregar suscripcion"
+                label="Agregar suscripción"
                 style={styles.addButton}
                 onPress={openCreate}
               />
@@ -850,7 +832,7 @@ export function SubscriptionsScreen() {
       <Portal>
         <AppContentDialog
           visible={Boolean(infoSubscription)}
-          title="Informacion"
+          title="Información"
           titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
@@ -866,7 +848,7 @@ export function SubscriptionsScreen() {
               />
               <AppInfoLine
                 label="Monto"
-                value={formatAmount(infoSubscription.amount, data.currency)}
+                value={formatMoneyFromCents(infoSubscription.amount, data.currency)}
               />
               <AppInfoLine
                 label="Frecuencia"
@@ -874,7 +856,7 @@ export function SubscriptionsScreen() {
               />
               <AppInfoLine
                 label="Promedio mensual"
-                value={formatAmount(
+                value={formatMoneyFromCents(
                   getMonthlyEquivalent(infoSubscription),
                   data.currency,
                 )}
@@ -884,12 +866,12 @@ export function SubscriptionsScreen() {
                 value={infoSubscription.notes || "Sin notas"}
               />
               <AppInfoLine
-                label="Creacion"
-                value={formatDateTime(infoSubscription.createdAt)}
+                label="Creación"
+                value={formatAppDateTime(infoSubscription.createdAt)}
               />
               <AppInfoLine
-                label="Actualizacion"
-                value={formatDateTime(infoSubscription.updatedAt)}
+                label="Actualización"
+                value={formatAppDateTime(infoSubscription.updatedAt)}
               />
             </>
           ) : null}
@@ -903,7 +885,7 @@ export function SubscriptionsScreen() {
           showNameError={showNameError}
           styles={styles}
           title={
-            editingSubscription ? "Editar suscripcion" : "Agregar suscripcion"
+            editingSubscription ? "Editar suscripción" : "Agregar suscripción"
           }
           values={formValues}
           visible={isFormOpen}
@@ -914,8 +896,8 @@ export function SubscriptionsScreen() {
 
         <AppConfirmDialog
           visible={Boolean(deleteSubscription)}
-          title="Eliminar suscripcion"
-          message="Esta accion archivara la suscripcion y dejara de mostrarse."
+          title="Eliminar suscripción"
+          message="Esta acción archivará la suscripción y dejará de mostrarse."
           confirmLabel="Confirmar"
           onCancel={() => setDeleteSubscription(null)}
           onConfirm={confirmDelete}
@@ -1007,7 +989,7 @@ function SubscriptionFormDialog({
         />
         {showCategoryError ? (
           <HelperText type="error" visible>
-            Elige la categoria de la suscripcion.
+            Elige la categoría de la suscripción.
           </HelperText>
         ) : null}
       </View>
@@ -1017,15 +999,15 @@ function SubscriptionFormDialog({
           <Text style={styles.pickerLabel}>SUBCATEGORIA</Text>
           <AppSelectMenu
             icon="chevron-down"
-            label="Subcategoria"
+            label="Subcategoría"
             options={[
-              { label: "Sin subcategoria", value: selectedParentCategory?.id ?? "" },
+              { label: "Sin subcategoría", value: selectedParentCategory?.id ?? "" },
               ...subcategoryOptions.map((category) => ({
                 label: category.name,
                 value: category.id,
               })),
             ]}
-            selectedLabel={selectedSubcategory?.name ?? "Sin subcategoria"}
+            selectedLabel={selectedSubcategory?.name ?? "Sin subcategoría"}
             selectedValue={selectedCategory?.id ?? ""}
             buttonStyle={styles.select}
             buttonContentStyle={styles.selectContent}
@@ -1047,7 +1029,7 @@ function SubscriptionFormDialog({
         />
         {showAmountError ? (
           <HelperText type="error" visible>
-            Escribe cuanto cuesta, mayor a cero.
+            Escribe cuánto cuesta, mayor a cero.
           </HelperText>
         ) : null}
       </View>

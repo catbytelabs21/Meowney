@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Portal, Snackbar } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 
@@ -16,7 +16,7 @@ export function AppMeowneySnackbar({
   onDismiss,
 }: AppMeowneySnackbarProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (

@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type { MovementListItem, Transfer } from '@/features/transactions/types';
 
 type TransferRow = {
@@ -61,14 +62,6 @@ function mapTransferMovement(row: TransferMovementRow): MovementListItem {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function createId() {
-  return `transfer_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
 }
 
 export const transferRepository = {
@@ -140,9 +133,9 @@ export const transferRepository = {
   },
 
   create(input: TransferInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const transfer: Transfer = {
-      id: createId(),
+      id: createRepositoryId('transfer'),
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amount: input.amount,
@@ -182,7 +175,7 @@ export const transferRepository = {
   },
 
   update(id: string, input: TransferInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -208,7 +201,7 @@ export const transferRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

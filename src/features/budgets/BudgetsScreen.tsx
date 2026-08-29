@@ -34,7 +34,7 @@ import { categoryRepository } from '@/database/repositories/category.repository'
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -45,7 +45,8 @@ import {
   getSelectedSubcategory,
   getSubcategories,
 } from '@/utils/categoryHierarchy';
-import { formatAppDate, formatAppDateTime } from '@/utils/dateFormat';
+import { formatAppDate, formatAppDateTime, isDateKey } from '@/utils/dateFormat';
+import { formatMoneyFromCents, parseMoneyToCents } from '@/utils/moneyFormat';
 import type { BudgetListItem, BudgetPeriod } from './types';
 import type { Category } from '@/features/categories/types';
 
@@ -128,23 +129,8 @@ function getFormFromBudget(budget: BudgetListItem): BudgetFormValues {
   };
 }
 
-function parseAmount(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  const number = Number(normalized);
-
-  if (!Number.isFinite(number) || number <= 0) {
-    return null;
-  }
-
-  return Math.round(number * 100);
-}
-
-function isDateKey(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
-}
-
 function toInput(values: BudgetFormValues): BudgetInput | null {
-  const amount = parseAmount(values.amount);
+  const amount = parseMoneyToCents(values.amount);
   const isCustomPeriod = values.period === 'custom';
   const periodRange = isCustomPeriod ? null : getPeriodRange(values.period);
   const startDate = isCustomPeriod ? values.startDate.trim() : periodRange?.startDate ?? todayKey();
@@ -163,21 +149,6 @@ function toInput(values: BudgetFormValues): BudgetInput | null {
   };
 }
 
-function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency,
-  }).format(amount / 100);
-}
-
-function formatDate(value: string) {
-  return formatAppDate(value);
-}
-
-function formatDateTime(value: string) {
-  return formatAppDateTime(value);
-}
-
 function formatPeriod(period: BudgetPeriod) {
   return periodOptions.find((option) => option.value === period)?.label ?? 'Mensual';
 }
@@ -190,7 +161,7 @@ export function BudgetsScreen() {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const stableCurrency = useMemo(
     () => (selectedNotebookId ? notebookRepository.getActiveById(selectedNotebookId)?.currency ?? 'MXN' : 'MXN'),
@@ -262,7 +233,7 @@ export function BudgetsScreen() {
   };
 
   const saveForm = () => {
-    const amount = parseAmount(formValues.amount);
+    const amount = parseMoneyToCents(formValues.amount);
     const hasCategory = Boolean(formValues.categoryId);
     const isCustomPeriod = formValues.period === 'custom';
     const hasValidDates =
@@ -280,10 +251,10 @@ export function BudgetsScreen() {
 
     if (editingBudget) {
       budgetRepository.update(editingBudget.id, input);
-      setSnackbarMessage('Limite actualizado; Meowney queda atento al gasto.');
+      setSnackbarMessage('Límite actualizado; Meowney queda atento al gasto.');
     } else {
       budgetRepository.create(input);
-      setSnackbarMessage('Limite creado para cuidar esa categoria.');
+      setSnackbarMessage('Límite creado para cuidar esa categoría.');
     }
 
     closeForm();
@@ -297,7 +268,7 @@ export function BudgetsScreen() {
 
     budgetRepository.archive(deleteBudget.id);
     setDeleteBudget(null);
-    setSnackbarMessage('Limite archivado fuera de la guarida.');
+    setSnackbarMessage('Límite archivado fuera de la guarida.');
     reloadBudgets();
   };
 
@@ -325,7 +296,7 @@ export function BudgetsScreen() {
             </Text>
           </View>
           <Text numberOfLines={1} style={styles.budgetAmount}>
-            {formatAmount(item.amount, data.currency)}
+            {formatMoneyFromCents(item.amount, data.currency)}
           </Text>
         </Pressable>
 
@@ -387,15 +358,14 @@ export function BudgetsScreen() {
       />
       <AppScreen
         eyebrow="PRESUPUESTOS"
-        title="Limites con garra"
-        helpTitle="Para que sirven los presupuestos?"
-        helpMessage="Los presupuestos son limites para que Meowney te ayude a no gastar de mas en una categoria. Define cuanto quieres permitir y revisa si esa parte de la libreta sigue bajo control."
+        helpTitle="¿Para qué sirven los presupuestos?"
+        helpMessage="Los presupuestos son límites para que Meowney te ayude a no gastar de más en una categoría. Define cuánto quieres permitir y revisa si esa parte de la libreta sigue bajo control."
       >
         {!selectedNotebookId ? (
           <AppEmptyState
             icon="book-alert-outline"
             title="Selecciona una libreta"
-            message="Entra primero a una guarida para crear limites de gasto."
+            message="Entra primero a una guarida para crear límites de gasto."
             style={styles.missingNotebook}
           />
         ) : (
@@ -413,11 +383,11 @@ export function BudgetsScreen() {
                 ) : (
                   <AppEmptyState
                     icon="cash-lock"
-                    title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aun no hay limites'}
+                    title={loadError ? 'No se pudieron cargar los presupuestos' : 'Aún no hay límites'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Aqui apareceran tus limites de gasto por categoria. Crea un presupuesto para saber cuanto puedes gastar y cuando Meowney debe avisarte que vas cerca del limite.'
+                        : 'Aquí aparecerán tus límites de gasto por categoría. Crea un presupuesto para saber cuánto puedes gastar y cuándo Meowney debe avisarte que vas cerca del límite.'
                     }
                     style={styles.emptyState}
                   />
@@ -441,7 +411,7 @@ export function BudgetsScreen() {
       <Portal>
         <AppContentDialog
           visible={Boolean(infoBudget)}
-          title="Informacion"
+          title="Información"
           titleIcon="information-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
@@ -450,13 +420,13 @@ export function BudgetsScreen() {
         >
           {infoBudget ? (
             <>
-              <AppInfoLine label="Categoria" value={infoBudget.categoryName} />
-              <AppInfoLine label="Monto" value={formatAmount(infoBudget.amount, data.currency)} />
+              <AppInfoLine label="Categoría" value={infoBudget.categoryName} />
+              <AppInfoLine label="Monto" value={formatMoneyFromCents(infoBudget.amount, data.currency)} />
               <AppInfoLine label="Periodo" value={formatPeriod(infoBudget.period)} />
-              <AppInfoLine label="Inicio" value={formatDate(infoBudget.startDate)} />
-              <AppInfoLine label="Fin" value={infoBudget.endDate ? formatDate(infoBudget.endDate) : 'Sin fecha fin'} />
-              <AppInfoLine label="Creacion" value={formatDateTime(infoBudget.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDateTime(infoBudget.updatedAt)} />
+              <AppInfoLine label="Inicio" value={formatAppDate(infoBudget.startDate)} />
+              <AppInfoLine label="Fin" value={infoBudget.endDate ? formatAppDate(infoBudget.endDate) : 'Sin fecha fin'} />
+              <AppInfoLine label="Creación" value={formatAppDateTime(infoBudget.createdAt)} />
+              <AppInfoLine label="Actualización" value={formatAppDateTime(infoBudget.updatedAt)} />
             </>
           ) : null}
         </AppContentDialog>
@@ -479,7 +449,7 @@ export function BudgetsScreen() {
         <AppConfirmDialog
           visible={Boolean(deleteBudget)}
           title="Eliminar presupuesto"
-          message="Esta accion archivara el presupuesto y dejara de mostrarse."
+          message="Esta acción archivará el presupuesto y dejará de mostrarse."
           confirmLabel="Confirmar"
           onCancel={() => setDeleteBudget(null)}
           onConfirm={confirmDelete}
@@ -556,7 +526,7 @@ function BudgetFormDialog({
               />
               {showCategoryError ? (
                 <HelperText type="error" visible>
-                  Elige la categoria que quieres vigilar.
+                  Elige la categoría que quieres vigilar.
                 </HelperText>
               ) : null}
             </View>
@@ -566,15 +536,15 @@ function BudgetFormDialog({
                 <Text style={styles.pickerLabel}>SUBCATEGORIA</Text>
                 <AppSelectMenu
                   icon="chevron-down"
-                  label="Subcategoria"
+                  label="Subcategoría"
                   options={[
-                    { label: 'Sin subcategoria', value: selectedParentCategory?.id ?? '' },
+                    { label: 'Sin subcategoría', value: selectedParentCategory?.id ?? '' },
                     ...subcategoryOptions.map((category) => ({
                       label: category.name,
                       value: category.id,
                     })),
                   ]}
-                  selectedLabel={selectedSubcategory?.name ?? 'Sin subcategoria'}
+                  selectedLabel={selectedSubcategory?.name ?? 'Sin subcategoría'}
                   selectedValue={selectedCategory?.id ?? ''}
                   buttonStyle={styles.select}
                   buttonContentStyle={styles.selectContent}

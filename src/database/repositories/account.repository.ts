@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type { Account, AccountType } from '@/features/accounts/types';
 
 type AccountRow = {
@@ -38,14 +39,6 @@ function mapAccount(row: AccountRow): Account {
   };
 }
 
-function createId() {
-  return `account_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
 export const accountRepository = {
   listActiveByNotebook(notebookId: string) {
     const rows = database.getAllSync<AccountRow>(
@@ -63,9 +56,9 @@ export const accountRepository = {
   },
 
   create(input: AccountInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const account: Account = {
-      id: createId(),
+      id: createRepositoryId('account'),
       ...input,
       createdAt,
       updatedAt: createdAt,
@@ -103,7 +96,7 @@ export const accountRepository = {
   },
 
   update(id: string, input: AccountInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -131,7 +124,7 @@ export const accountRepository = {
   },
 
   archive(id: string, notebookId: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

@@ -11,9 +11,9 @@ import { initializeDatabase } from '@/database/database';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { useAppStore } from '@/stores/app.store';
 import { motion } from '@/theme/motion';
-import { darkTheme, lightTheme } from '@/theme/theme';
+import { getMeowneyTheme } from '@/theme/theme';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 initializeDatabase();
 bootstrapStarterData();
 useAppStore.getState().hydrateSettings();
@@ -22,9 +22,23 @@ export const unstable_settings = {
   initialRouteName: 'index',
 };
 
+const stackRoutes = [
+  'index',
+  'notebooks/index',
+  '(tabs)',
+  'accounts/index',
+  'accounts/create',
+  'accounts/[id]',
+  'budgets/index',
+  'categories/index',
+  'categories/create',
+  'savings/index',
+  'subscriptions/index',
+] as const;
+
 export default function RootLayout() {
   const colorScheme = useMeowneyColorScheme();
-  const theme = colorScheme === 'light' ? lightTheme : darkTheme;
+  const theme = getMeowneyTheme(colorScheme);
   const navigationTheme = useMemo(
     () => ({
       ...(colorScheme === 'light' ? DefaultTheme : DarkTheme),
@@ -46,7 +60,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
 
@@ -74,15 +88,9 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: theme.colors.background },
             }}
           >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="notebooks/index" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="accounts/index" />
-            <Stack.Screen name="accounts/create" />
-            <Stack.Screen name="accounts/[id]" />
-            <Stack.Screen name="budgets/index" />
-            <Stack.Screen name="categories/index" />
-            <Stack.Screen name="categories/create" />
+            {stackRoutes.map((name) => (
+              <Stack.Screen key={name} name={name} />
+            ))}
           </Stack>
           <AppSettingsPanel />
         </View>

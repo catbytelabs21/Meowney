@@ -8,14 +8,25 @@ import { AppHeaderActionButton } from '@/components/layout/AppHeaderActionButton
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors } from '@/theme/colors';
+import { getMeowneyColors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
 
 export const unstable_settings = {
-  initialRouteName: 'more',
+  initialRouteName: 'my-notebook',
 };
 
 type TabIconName = keyof typeof MaterialCommunityIcons.glyphMap;
+type TabRoute = {
+  icon: TabIconName;
+  name: string;
+  title: string;
+};
+
+const tabRoutes = [
+  { name: 'movements', title: 'Movimientos', icon: 'swap-vertical' },
+  { name: 'my-notebook', title: 'Mi libreta', icon: 'book-open-page-variant-outline' },
+  { name: 'balance', title: 'Mi dinero', icon: 'wallet-outline' },
+] satisfies TabRoute[];
 
 function tabIcon(name: TabIconName) {
   return function Icon({ color, size }: { color: ColorValue; size: number }) {
@@ -25,7 +36,7 @@ function tabIcon(name: TabIconName) {
 
 export default function TabsLayout() {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
   const selectedNotebookName = useAppStore((state) => state.selectedNotebookName);
   const loadNotebookName = useCallback(
@@ -50,7 +61,7 @@ export default function TabsLayout() {
       />
       <Tabs
         backBehavior="initialRoute"
-        initialRouteName="more"
+        initialRouteName="my-notebook"
         screenOptions={{
           animation: 'shift',
           headerShown: false,
@@ -72,18 +83,9 @@ export default function TabsLayout() {
           },
         }}
       >
-        <Tabs.Screen
-          name="history-movements"
-          options={{ title: 'Movimientos', tabBarIcon: tabIcon('swap-vertical') }}
-        />
-        <Tabs.Screen
-          name="more"
-          options={{ title: 'Mi libreta', tabBarIcon: tabIcon('book-open-page-variant-outline') }}
-        />
-        <Tabs.Screen
-          name="balance"
-          options={{ title: 'Mi dinero', tabBarIcon: tabIcon('wallet-outline') }}
-        />
+        {tabRoutes.map(({ icon, name, title }) => (
+          <Tabs.Screen key={name} name={name} options={{ title, tabBarIcon: tabIcon(icon) }} />
+        ))}
       </Tabs>
     </View>
   );

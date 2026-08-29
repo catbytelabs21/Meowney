@@ -1,5 +1,6 @@
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { MeowneyColors } from '@/theme/colors';
+import { getDefaultColorOptions } from './shared';
 
 export type SubscriptionIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -22,16 +23,5 @@ export const SUBSCRIPTION_ICON_OPTIONS: SubscriptionIconName[] = [
 ];
 
 export function getSubscriptionColorOptions(colors: MeowneyColors) {
-  return [
-    colors.irisGleam,
-    colors.cyanSignal,
-    colors.orchidBloom,
-    colors.periwinkle,
-    colors.paleIris,
-    colors.deepIris,
-    colors.success,
-    colors.warning,
-    colors.error,
-    colors.silver,
-  ];
+  return getDefaultColorOptions(colors);
 }

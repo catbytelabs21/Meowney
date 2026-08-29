@@ -1,9 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Pressable, ScrollView, StyleSheet, Text as NativeText, View } from 'react-native';
 import { Checkbox, IconButton, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { brandColors, getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -20,7 +20,6 @@ type AppInfoLineProps = {
 
 type AppDescriptionInputProps = {
   placeholder: string;
-  scrollRef?: RefObject<ScrollView | null>;
   value: string;
   onChangeText: (value: string) => void;
 };
@@ -40,11 +39,7 @@ type AppColorPickerProps = {
 
 type AppOptionToggleProps = {
   checked: boolean;
-  checkedIcon?: AppIconName;
   checkedLabel: string;
-  leadingCheckedIcon?: AppIconName;
-  leadingUncheckedIcon?: AppIconName;
-  uncheckedIcon?: AppIconName;
   uncheckedLabel: string;
   onToggle: () => void;
 };
@@ -61,7 +56,7 @@ type AppReadOnlyRowProps = {
 
 export function AppInfoLine({ label, value }: AppInfoLineProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <View style={styles.infoLine}>
@@ -73,7 +68,7 @@ export function AppInfoLine({ label, value }: AppInfoLineProps) {
 
 export function AppDescriptionInput({ placeholder, value, onChangeText }: AppDescriptionInputProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <TextInput
@@ -97,7 +92,7 @@ export function AppIconPickerGrid<IconName extends AppIconName>({
   onSelect,
 }: AppIconPickerGridProps<IconName>) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const [pickerWidth, setPickerWidth] = useState(1);
   const pageSize = Math.max(1, columns);
   const iconPages = useMemo(
@@ -150,7 +145,7 @@ export function AppIconPickerGrid<IconName extends AppIconName>({
 
 export function AppColorPicker({ colors: colorOptions, selectedColor, onSelect }: AppColorPickerProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const normalizedSelectedColor = normalizeHexColor(selectedColor);
   const lastSelectedColorRef = useRef(normalizedSelectedColor);
   const defaultColors = colorOptions
@@ -448,6 +443,7 @@ function ColorRangeControl({ colors, label, stops, value, onChange, onChangeEnd 
           style={[
             styles.colorRangeThumb,
             {
+              backgroundColor: colors.swatchOverlay,
               borderColor: colors.text,
               left: `${clampedValue * 100}%`,
             },
@@ -516,7 +512,7 @@ function hsvToHex(hue: number, saturation: number, value: number) {
 }
 
 function hexToHsv(color: string) {
-  const normalizedColor = normalizeHexColor(color) ?? '#847DFF';
+  const normalizedColor = normalizeHexColor(color) ?? brandColors.irisGleam;
   const red = Number.parseInt(normalizedColor.slice(1, 3), 16) / 255;
   const green = Number.parseInt(normalizedColor.slice(3, 5), 16) / 255;
   const blue = Number.parseInt(normalizedColor.slice(5, 7), 16) / 255;
@@ -575,7 +571,7 @@ export function AppOptionToggle({
   onToggle,
 }: AppOptionToggleProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <Pressable
@@ -609,7 +605,7 @@ export function AppReadOnlyRow({
   trailingTextColor,
 }: AppReadOnlyRowProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <View style={[styles.readOnlyRow, { borderColor: colors.pressed, backgroundColor: colors.background }]}>
@@ -788,7 +784,6 @@ const styles = StyleSheet.create({
     marginLeft: -6,
     borderWidth: 2,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   optionToggle: {
     minHeight: 44,

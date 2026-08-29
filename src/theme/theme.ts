@@ -1,5 +1,10 @@
 import { MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
-import { darkColors, lightColors, type MeowneyColors } from './colors';
+import {
+  darkColors,
+  lightColors,
+  type MeowneyColorScheme,
+  type MeowneyColors,
+} from './colors';
 import { radii } from './radii';
 
 function createPaperColors(appColors: MeowneyColors) {
@@ -23,7 +28,7 @@ function createPaperColors(appColors: MeowneyColors) {
   };
 }
 
-export const lightTheme = {
+const lightTheme = {
   ...MD3LightTheme,
   roundness: radii.button,
   colors: {
@@ -32,7 +37,7 @@ export const lightTheme = {
   },
 };
 
-export const darkTheme = {
+const darkTheme = {
   ...MD3DarkTheme,
   roundness: radii.button,
   colors: {
@@ -41,6 +46,6 @@ export const darkTheme = {
   },
 };
 
-export const theme = darkTheme;
-
-export type MeowneyTheme = typeof darkTheme;
+export function getMeowneyTheme(colorScheme: MeowneyColorScheme) {
+  return colorScheme === 'light' ? lightTheme : darkTheme;
+}

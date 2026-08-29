@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type { Notebook } from '@/features/notebooks/types';
 
 type NotebookRow = {
@@ -35,14 +36,6 @@ function mapNotebook(row: NotebookRow): Notebook {
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
   };
-}
-
-function createId() {
-  return `notebook_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
 }
 
 export const notebookRepository = {
@@ -88,9 +81,9 @@ export const notebookRepository = {
   },
 
   create(input: NotebookInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const notebook: Notebook = {
-      id: createId(),
+      id: createRepositoryId('notebook'),
       ...input,
       isDefault: false,
       createdAt,
@@ -128,7 +121,7 @@ export const notebookRepository = {
   },
 
   update(id: string, input: NotebookInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -154,7 +147,7 @@ export const notebookRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -173,7 +166,7 @@ export const notebookRepository = {
   },
 
   setDefault(id: string | null) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.withTransactionSync(() => {
       database.runSync(

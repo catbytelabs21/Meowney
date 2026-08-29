@@ -52,7 +52,7 @@ import {
 } from "@/database/repositories/notebook.repository";
 import { useDeferredQuery } from "@/hooks/useDeferredQuery";
 import { useAppStore } from "@/stores/app.store";
-import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
+import { brandColors, getMeowneyColors, type MeowneyColors } from "@/theme/colors";
 import { radii } from "@/theme/radii";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -111,16 +111,12 @@ function toInput(values: NotebookFormValues): NotebookInput {
   };
 }
 
-function formatDate(value: string) {
-  return formatAppDateTime(value);
-}
-
 const starterAccount = {
   name: "Cartera",
   description: "Efectivo disponible.",
   type: "CASH" as const,
   icon: "wallet-outline",
-  color: "#7DD8A8",
+  color: brandColors.success,
 };
 
 export function NotebooksScreen() {
@@ -136,7 +132,7 @@ export function NotebooksScreen() {
     (state) => state.setSelectedNotebookId,
   );
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getNotebookColorOptions(colors), [colors]);
   const shouldOpenDefaultNotebook =
@@ -156,7 +152,7 @@ export function NotebooksScreen() {
     reload: reloadData,
   } = useDeferredQuery(loadNotebooksData, { notebooks: [] });
   const { notebooks } = notebooksData;
-  const notebookEntryPath = "/more" as const;
+  const notebookEntryPath = "/my-notebook" as const;
   const [infoNotebook, setInfoNotebook] = useState<Notebook | null>(null);
   const [deleteNotebook, setDeleteNotebook] = useState<Notebook | null>(null);
   const [editingNotebook, setEditingNotebook] = useState<Notebook | null>(null);
@@ -215,7 +211,7 @@ export function NotebooksScreen() {
   ]);
 
   useEffect(() => {
-    router.prefetch("/more");
+    router.prefetch("/my-notebook");
   }, []);
 
   const openCreate = () => {
@@ -392,11 +388,10 @@ export function NotebooksScreen() {
                 <View style={styles.headerTopRow}>
                   <AppScreenHeader
                     eyebrow="LIBRETAS"
-                    title="Tus libretas"
                     style={styles.headerTitle}
                   />
                   <IconButton
-                    accessibilityLabel="Que es una libreta"
+                    accessibilityLabel="Qué es una libreta"
                     icon="help-circle-outline"
                     iconColor={colors.mutedText}
                     size={22}
@@ -459,19 +454,19 @@ export function NotebooksScreen() {
         >
           {infoNotebook ? (
             <>
-              <AppInfoLine label="Titulo" value={infoNotebook.name} />
+              <AppInfoLine label="Título" value={infoNotebook.name} />
               <AppInfoLine
-                label="Descripcion"
-                value={infoNotebook.description || "Sin descripcion"}
+                label="Descripción"
+                value={infoNotebook.description || "Sin descripción"}
               />
               <AppInfoLine label="Moneda" value={infoNotebook.currency} />
               <AppInfoLine
-                label="Creacion"
-                value={formatDate(infoNotebook.createdAt)}
+                label="Creación"
+                value={formatAppDateTime(infoNotebook.createdAt)}
               />
               <AppInfoLine
-                label="Actualizacion"
-                value={formatDate(infoNotebook.updatedAt)}
+                label="Actualización"
+                value={formatAppDateTime(infoNotebook.updatedAt)}
               />
             </>
           ) : null}
@@ -479,7 +474,7 @@ export function NotebooksScreen() {
 
         <AppContentDialog
           visible={isNotebookHelpOpen}
-          title="Que es una libreta?"
+          title="¿Qué es una libreta?"
           titleIcon="help-circle-outline"
           titleIconColor={colors.text}
           contentContainerStyle={styles.infoDialogContent}
@@ -511,7 +506,7 @@ export function NotebooksScreen() {
         <AppConfirmDialog
           visible={Boolean(deleteNotebook)}
           title="Eliminar libreta"
-          message="Esta accion archivara la libreta y dejara de mostrarse en el listado."
+          message="Esta acción archivará la libreta y dejará de mostrarse en el listado."
           onCancel={() => setDeleteNotebook(null)}
           onConfirm={confirmDelete}
         />
@@ -586,7 +581,6 @@ function NotebookFormDialog({
         <AppDescriptionInput
           placeholder="Ej. Gastos del hogar"
           value={values.description}
-          scrollRef={formScrollRef}
           onChangeText={(description) => onChange({ ...values, description })}
         />
       </View>
@@ -663,8 +657,8 @@ function NotebookFormDialog({
             <Text style={styles.pickerLabel}>CATEGORIAS DEFAULT</Text>
             <AppOptionToggle
               checked={values.createDefaultCategories}
-              checkedLabel="Crear categorias"
-              uncheckedLabel="No crear categorias"
+              checkedLabel="Crear categorías"
+              uncheckedLabel="No crear categorías"
               onToggle={() =>
                 onChange({
                   ...values,

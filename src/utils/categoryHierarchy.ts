@@ -1,8 +1,12 @@
-import type { Category, CategoryType } from "@/features/categories/types";
+import type { Category, CategoryType } from '@/features/categories/types';
+
+function findCategoryById(categories: Category[], categoryId: string) {
+  return categories.find((category) => category.id === categoryId);
+}
 
 export function getCategoryDisplayName(categories: Category[], category: Category | null | undefined) {
   if (!category) {
-    return "";
+    return '';
   }
 
   const parent = category.parentId
@@ -15,7 +19,7 @@ export function getCategoryDisplayName(categories: Category[], category: Categor
 export function getCategoryDisplayNameById(categories: Category[], categoryId: string) {
   return getCategoryDisplayName(
     categories,
-    categories.find((category) => category.id === categoryId),
+    findCategoryById(categories, categoryId),
   );
 }
 
@@ -34,7 +38,7 @@ export function getSubcategories(categories: Category[], parentId: string | null
 }
 
 export function getSelectedParentCategory(categories: Category[], categoryId: string) {
-  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const selectedCategory = findCategoryById(categories, categoryId);
 
   if (!selectedCategory) {
     return null;
@@ -44,11 +48,11 @@ export function getSelectedParentCategory(categories: Category[], categoryId: st
     return selectedCategory;
   }
 
-  return categories.find((category) => category.id === selectedCategory.parentId) ?? selectedCategory;
+  return findCategoryById(categories, selectedCategory.parentId) ?? selectedCategory;
 }
 
 export function getSelectedSubcategory(categories: Category[], categoryId: string) {
-  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const selectedCategory = findCategoryById(categories, categoryId);
 
   return selectedCategory?.parentId ? selectedCategory : null;
 }

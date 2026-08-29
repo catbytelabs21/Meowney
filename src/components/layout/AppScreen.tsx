@@ -11,7 +11,7 @@ import { IconButton, Portal, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
 import { AppContentDialog } from '@/components/ui/AppFormDialog';
-import { darkColors, lightColors } from '@/theme/colors';
+import { getMeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -20,8 +20,6 @@ type AppScreenHeaderProps = {
   eyebrow: string;
   helpMessage?: string;
   helpTitle?: string;
-  subtitle?: string;
-  title: string;
   style?: StyleProp<ViewStyle>;
   withBottomGap?: boolean;
 };
@@ -41,15 +39,14 @@ export function AppScreenHeader({
 }: AppScreenHeaderProps) {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
-  const titleColor = colorScheme === 'light' ? colors.text : colors.pure;
+  const colors = getMeowneyColors(colorScheme);
   const hasHelp = Boolean(helpMessage);
 
   return (
     <>
       <View style={[styles.header, withBottomGap ? styles.headerBottomGap : null, style]}>
         <View style={styles.eyebrowRow}>
-          <Text style={[styles.eyebrow, { color: titleColor }]}>{eyebrow}</Text>
+          <Text style={[styles.eyebrow, { color: colors.mutedText }]}>{eyebrow}</Text>
           {hasHelp ? (
             <IconButton
               accessibilityLabel={`Ayuda de ${eyebrow}`}
@@ -88,11 +85,9 @@ export function AppScreen({
   helpMessage,
   helpTitle,
   scroll = false,
-  subtitle,
-  title,
 }: AppScreenProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   const content = (
     <>
@@ -100,8 +95,6 @@ export function AppScreen({
         eyebrow={eyebrow}
         helpMessage={helpMessage}
         helpTitle={helpTitle}
-        subtitle={subtitle}
-        title={title}
       />
       {children}
     </>
@@ -141,7 +134,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   header: {
-    gap: 0,
+    gap: spacing.xs,
   },
   eyebrowRow: {
     minWidth: 0,
@@ -170,10 +163,10 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     flexShrink: 1,
-    fontSize: typography.screenTitleSize,
+    fontSize: typography.monoLabelSize,
     fontWeight: typography.mediumWeight,
     letterSpacing: 0,
-    lineHeight: typography.screenTitleLineHeight,
+    lineHeight: 18,
   },
 });
 

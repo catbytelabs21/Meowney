@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppSettingsButton } from './AppSettingsButton';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors } from '@/theme/colors';
+import { getMeowneyColors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 
@@ -16,7 +16,7 @@ type AppHeaderProps = {
 
 export function AppHeader({ left, right = <AppSettingsButton />, title }: AppHeaderProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: colors.background }]}>

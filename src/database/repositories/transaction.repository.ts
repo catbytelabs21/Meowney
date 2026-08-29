@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type {
   MovementListItem,
   Transaction,
@@ -88,22 +89,6 @@ function mapMovement(row: MovementRow): MovementListItem {
   };
 }
 
-function createId() {
-  return `transaction_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createGroupId() {
-  return `transaction_group_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createGroupMemberId() {
-  return `transaction_group_member_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
 function insertTransactionGroup(group: TransactionGroup) {
   database.runSync(
     `
@@ -140,7 +125,7 @@ function insertTransactionGroupMember(
       )
       VALUES (?, ?, ?, NULL, ?, ?)
     `,
-    createGroupMemberId(),
+    createRepositoryId('transaction_group_member'),
     groupId,
     transactionId,
     createdAt,
@@ -269,9 +254,9 @@ export const transactionRepository = {
   },
 
   create(input: TransactionInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const transaction: Transaction = {
-      id: createId(),
+      id: createRepositoryId('transaction'),
       accountId: input.accountId,
       categoryId: input.categoryId,
       type: input.type,
@@ -292,9 +277,9 @@ export const transactionRepository = {
   },
 
   createMany(inputs: TransactionInput[]) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const transactions = inputs.map((input): Transaction => ({
-      id: createId(),
+      id: createRepositoryId('transaction'),
       accountId: input.accountId,
       categoryId: input.categoryId,
       type: input.type,
@@ -317,16 +302,16 @@ export const transactionRepository = {
   },
 
   createRecurring(inputs: TransactionInput[]) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const group: TransactionGroup = {
-      id: createGroupId(),
+      id: createRepositoryId('transaction_group'),
       type: 'recurring',
       createdAt,
       updatedAt: createdAt,
       archivedAt: null,
     };
     const transactions = inputs.map((input): Transaction => ({
-      id: createId(),
+      id: createRepositoryId('transaction'),
       accountId: input.accountId,
       categoryId: input.categoryId,
       type: input.type,
@@ -353,7 +338,7 @@ export const transactionRepository = {
   },
 
   update(id: string, input: TransactionInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -381,7 +366,7 @@ export const transactionRepository = {
   },
 
   updateAndDetach(id: string, input: TransactionInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.withTransactionSync(() => {
       this.update(id, input);
@@ -406,7 +391,7 @@ export const transactionRepository = {
     selectedTransactionId: string,
     input: TransactionInput,
   ) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.withTransactionSync(() => {
       database.runSync(
@@ -443,7 +428,7 @@ export const transactionRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -459,7 +444,7 @@ export const transactionRepository = {
   },
 
   archiveAndDetach(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.withTransactionSync(() => {
       database.runSync(
@@ -489,7 +474,7 @@ export const transactionRepository = {
   },
 
   archiveRecurringFuture(groupId: string, fromTransactionAt: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

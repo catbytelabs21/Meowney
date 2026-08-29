@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type { Subscription, SubscriptionFrequency, SubscriptionListItem } from '@/features/subscriptions/types';
 
 type SubscriptionRow = {
@@ -58,14 +59,6 @@ function mapSubscriptionListItem(row: SubscriptionListRow): SubscriptionListItem
   };
 }
 
-function createId() {
-  return `subscription_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
 export const subscriptionRepository = {
   listActiveByNotebook(notebookId: string) {
     const rows = database.getAllSync<SubscriptionListRow>(
@@ -90,9 +83,9 @@ export const subscriptionRepository = {
   },
 
   create(notebookId: string, input: SubscriptionInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const subscription: Subscription = {
-      id: createId(),
+      id: createRepositoryId('subscription'),
       notebookId,
       categoryId: input.categoryId,
       name: input.name,
@@ -141,7 +134,7 @@ export const subscriptionRepository = {
   },
 
   update(id: string, input: SubscriptionInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -171,7 +164,7 @@ export const subscriptionRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

@@ -1,28 +1,28 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { type Href, router } from "expo-router";
-import { useCallback, useMemo, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { Surface, Text } from "react-native-paper";
-import { useMeowneyColorScheme } from "@/hooks/useMeowneyColorScheme";
-import { AppScreen } from "@/components/layout/AppScreen";
-import { darkColors, lightColors, type MeowneyColors } from "@/theme/colors";
-import { motion } from "@/theme/motion";
-import { radii } from "@/theme/radii";
-import { spacing } from "@/theme/spacing";
-import { typography } from "@/theme/typography";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { type Href, router } from 'expo-router';
+import { useCallback, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Surface, Text } from 'react-native-paper';
+import { AppScreen } from '@/components/layout/AppScreen';
+import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
+import { radii } from '@/theme/radii';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
 
-type MoreIconName = keyof typeof MaterialCommunityIcons.glyphMap;
+type MyNotebookIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
-type MoreItem = {
+type MyNotebookItem = {
   description: string;
   href: Href<string | object>;
-  icon: MoreIconName;
+  icon: MyNotebookIconName;
   label: string;
 };
 
-export function MoreScreen() {
+export function MyNotebookScreen() {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === "light" ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigationLockedRef = useRef(false);
 
@@ -39,52 +39,57 @@ export function MoreScreen() {
     }, motion.screenTransitionDuration + 300);
   }, []);
 
-  const setupItems: MoreItem[] = [
+  const setupItems: MyNotebookItem[] = [
     {
-      description: "Tu dinero diario",
-      href: "/accounts",
-      icon: "wallet-outline",
-      label: "Cuentas",
+      description: 'Tu dinero diario',
+      href: '/accounts',
+      icon: 'wallet-outline',
+      label: 'Cuentas',
     },
     {
-      description: "Orden para movimientos",
-      href: "/categories",
-      icon: "tag-outline",
-      label: "Categorias",
+      description: 'Orden para movimientos',
+      href: '/categories',
+      icon: 'tag-outline',
+      label: 'Categorías',
     },
   ];
 
-  const controlItems: MoreItem[] = [
+  const controlItems: MyNotebookItem[] = [
     {
-      description: "Limites de gasto",
-      href: "/budgets",
-      icon: "cash-lock",
-      label: "Presupuestos",
+      description: 'Límites de gasto',
+      href: '/budgets',
+      icon: 'cash-lock',
+      label: 'Presupuestos',
     },
     {
-      description: "Pagos recurrentes",
-      href: "/subscriptions",
-      icon: "calendar-sync-outline",
-      label: "Suscripciones",
+      description: 'Metas y reservas',
+      href: '/savings',
+      icon: 'piggy-bank-outline',
+      label: 'Ahorros',
+    },
+    {
+      description: 'Pagos recurrentes',
+      href: '/subscriptions',
+      icon: 'calendar-sync-outline',
+      label: 'Suscripciones',
     },
   ];
 
   return (
     <AppScreen
       eyebrow="MI LIBRETA"
-      title="Centro de control"
-      helpTitle="Para que sirve Mi libreta?"
-      helpMessage="Aqui esta el centro de control de esta libreta. Desde este punto Meowney te deja abrir cuentas, categorias, presupuestos y otros cuidados para mantener tus finanzas separadas y bien vigiladas."
+      helpTitle="¿Para qué sirve Mi libreta?"
+      helpMessage="Aquí está el centro de control de esta libreta. Desde este punto Meowney te deja abrir cuentas, categorías, presupuestos y otros cuidados para mantener tus finanzas separadas y bien vigiladas."
       scroll
     >
-      <MoreSection
+      <MyNotebookSection
         items={setupItems}
         label="PARA EMPEZAR"
         styles={styles}
         colors={colors}
         onNavigate={navigateOnce}
       />
-      <MoreSection
+      <MyNotebookSection
         items={controlItems}
         label="CONTROL"
         styles={styles}
@@ -95,15 +100,21 @@ export function MoreScreen() {
   );
 }
 
-type MoreSectionProps = {
+type MyNotebookSectionProps = {
   colors: MeowneyColors;
-  items: MoreItem[];
+  items: MyNotebookItem[];
   label: string;
   onNavigate: (href: Href<string | object>) => void;
   styles: ReturnType<typeof createStyles>;
 };
 
-function MoreSection({ colors, items, label, onNavigate, styles }: MoreSectionProps) {
+function MyNotebookSection({
+  colors,
+  items,
+  label,
+  onNavigate,
+  styles,
+}: MyNotebookSectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label}</Text>
@@ -156,7 +167,7 @@ function createStyles(colors: MeowneyColors) {
       letterSpacing: 0.2,
     },
     sectionSurface: {
-      overflow: "hidden",
+      overflow: 'hidden',
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.card,
@@ -164,8 +175,8 @@ function createStyles(colors: MeowneyColors) {
     },
     item: {
       minHeight: 76,
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: spacing.md,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
@@ -180,8 +191,8 @@ function createStyles(colors: MeowneyColors) {
     itemIcon: {
       width: 40,
       height: 40,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
       borderRadius: radii.navItem,
       backgroundColor: colors.selected,
     },

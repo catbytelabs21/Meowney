@@ -1,4 +1,5 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
 import type { Budget, BudgetListItem, BudgetPeriod } from '@/features/budgets/types';
 
 type BudgetRow = {
@@ -48,14 +49,6 @@ function mapBudgetListItem(row: BudgetListRow): BudgetListItem {
     categoryIcon: row.category_icon,
     categoryName: row.category_name,
   };
-}
-
-function createId() {
-  return `budget_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
 }
 
 export const budgetRepository = {
@@ -121,9 +114,9 @@ export const budgetRepository = {
   },
 
   create(input: BudgetInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const budget: Budget = {
-      id: createId(),
+      id: createRepositoryId('budget'),
       categoryId: input.categoryId,
       amount: input.amount,
       period: input.period,
@@ -163,7 +156,7 @@ export const budgetRepository = {
   },
 
   update(id: string, input: BudgetInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -189,7 +182,7 @@ export const budgetRepository = {
   },
 
   archive(id: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `

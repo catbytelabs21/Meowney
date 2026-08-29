@@ -3,11 +3,15 @@ function pad(value: number) {
 }
 
 function parseDate(value: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (isDateKey(value)) {
     return new Date(`${value}T12:00:00`);
   }
 
   return new Date(value);
+}
+
+export function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 }
 
 export function formatAppDate(value: string) {
@@ -17,7 +21,7 @@ export function formatAppDate(value: string) {
     return value;
   }
 
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+  return formatDateParts(date);
 }
 
 export function formatAppDateTime(value: string) {
@@ -27,5 +31,9 @@ export function formatAppDateTime(value: string) {
     return value;
   }
 
-  return `${formatAppDate(value)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${formatDateParts(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatDateParts(date: Date) {
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }

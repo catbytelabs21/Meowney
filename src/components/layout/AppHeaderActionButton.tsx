@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors } from '@/theme/colors';
+import { getMeowneyColors } from '@/theme/colors';
 
 type HeaderIconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -17,7 +17,7 @@ export function AppHeaderActionButton({
   onPress,
 }: AppHeaderActionButtonProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <Pressable

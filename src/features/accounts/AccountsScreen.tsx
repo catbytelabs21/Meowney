@@ -41,7 +41,7 @@ import { accountRepository, type AccountInput } from '@/database/repositories/ac
 import { notebookRepository } from '@/database/repositories/notebook.repository';
 import { useDeferredQuery } from '@/hooks/useDeferredQuery';
 import { useAppStore } from '@/stores/app.store';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -89,10 +89,6 @@ function toInput(notebookId: string, values: AccountFormValues): AccountInput {
   };
 }
 
-function formatDate(value: string) {
-  return formatAppDateTime(value);
-}
-
 function formatAccountType(type: AccountType) {
   return ACCOUNT_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Otro';
 }
@@ -105,7 +101,7 @@ export function AccountsScreen() {
   const setSelectedNotebookId = useAppStore((state) => state.setSelectedNotebookId);
   const activeNotebookId = selectedNotebookId ?? routeNotebookId;
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const colorOptions = useMemo(() => getAccountColorOptions(colors), [colors]);
   const stableNotebookName = useMemo(() => {
@@ -178,7 +174,7 @@ export function AccountsScreen() {
 
     if (editingAccount) {
       accountRepository.update(editingAccount.id, toInput(activeNotebookId, formValues));
-      setSnackbarMessage('Cuenta actualizada; Meowney ya ajusto el saldo vigilado.');
+      setSnackbarMessage('Cuenta actualizada; Meowney ya ajustó el saldo vigilado.');
     } else {
       accountRepository.create(toInput(activeNotebookId, formValues));
       setSnackbarMessage('Cuenta agregada a la guarida.');
@@ -282,8 +278,7 @@ export function AccountsScreen() {
       />
       <AppScreen
         eyebrow="CUENTAS"
-        title="Saldos vigilados"
-        helpTitle="Para que sirven las cuentas?"
+        helpTitle="¿Para qué sirven las cuentas?"
         helpMessage="Las cuentas son los lugares donde vive tu dinero: efectivo, banco, tarjeta, ahorro o wallet. Meowney las vigila para que cada movimiento tenga de donde entrar o salir."
       >
         {!activeNotebookId ? (
@@ -313,11 +308,11 @@ export function AccountsScreen() {
                 ) : (
                   <AppEmptyState
                     icon="wallet-plus-outline"
-                    title={loadError ? 'No se pudieron cargar las cuentas' : 'Aun no hay saldos que vigilar'}
+                    title={loadError ? 'No se pudieron cargar las cuentas' : 'Aún no hay saldos que vigilar'}
                     message={
                       loadError
                         ? 'Intenta entrar de nuevo o revisa que la base de datos este disponible.'
-                        : 'Aqui apareceran tus bancos, efectivo, tarjetas o wallets. Agrega una cuenta para que cada ingreso o gasto tenga de donde entrar o salir.'
+                        : 'Aquí aparecerán tus bancos, efectivo, tarjetas o wallets. Agrega una cuenta para que cada ingreso o gasto tenga de donde entrar o salir.'
                     }
                     style={styles.emptyState}
                   />
@@ -349,11 +344,11 @@ export function AccountsScreen() {
         >
           {infoAccount ? (
             <>
-              <AppInfoLine label="Titulo" value={infoAccount.name} />
-              <AppInfoLine label="Descripcion" value={infoAccount.description || 'Sin descripcion'} />
+              <AppInfoLine label="Título" value={infoAccount.name} />
+              <AppInfoLine label="Descripción" value={infoAccount.description || 'Sin descripción'} />
               <AppInfoLine label="Tipo" value={formatAccountType(infoAccount.type)} />
-              <AppInfoLine label="Creacion" value={formatDate(infoAccount.createdAt)} />
-              <AppInfoLine label="Actualizacion" value={formatDate(infoAccount.updatedAt)} />
+              <AppInfoLine label="Creación" value={formatAppDateTime(infoAccount.createdAt)} />
+              <AppInfoLine label="Actualización" value={formatAppDateTime(infoAccount.updatedAt)} />
             </>
           ) : null}
         </AppContentDialog>
@@ -373,7 +368,7 @@ export function AccountsScreen() {
         <AppConfirmDialog
           visible={Boolean(deleteAccount)}
           title="Eliminar cuenta"
-          message="Esta accion archivara la cuenta y dejara de mostrarse en el listado."
+          message="Esta acción archivará la cuenta y dejará de mostrarse en el listado."
           onCancel={() => setDeleteAccount(null)}
           onConfirm={confirmDelete}
         />
@@ -444,7 +439,6 @@ function AccountFormDialog({
         <Text style={styles.pickerLabel}>DESCRIPCION</Text>
         <AppDescriptionInput
           placeholder="Ej. Dinero para pagos diarios"
-          scrollRef={formScrollRef}
           value={values.description}
           onChangeText={(description) => onChange({ ...values, description })}
         />

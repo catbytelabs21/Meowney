@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Dialog, IconButton, Switch, Text, TextInput } from 'react-native-paper';
 import { useMeowneyColorScheme } from '@/hooks/useMeowneyColorScheme';
-import { darkColors, lightColors, type MeowneyColors } from '@/theme/colors';
+import { getMeowneyColors, type MeowneyColors } from '@/theme/colors';
 import { radii } from '@/theme/radii';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
@@ -80,7 +80,7 @@ function formatMonthLabel(date: Date) {
 
 export function AppDateInput({ label, value, onOpen }: AppDateInputProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
 
   return (
     <TextInput
@@ -103,7 +103,7 @@ export function AppDatePickerDialog({
   onSelect,
 }: AppDatePickerDialogProps) {
   const colorScheme = useMeowneyColorScheme();
-  const colors = colorScheme === 'light' ? lightColors : darkColors;
+  const colors = getMeowneyColors(colorScheme);
   const [view, setView] = useState<DatePickerView>('calendar');
   const [monthDate, setMonthDate] = useState(() => new Date(`${selectedDate}T12:00:00`));
   const [calendarWidth, setCalendarWidth] = useState(0);

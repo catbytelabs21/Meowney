@@ -1,4 +1,6 @@
 import { database } from '@/database/database';
+import { createRepositoryId, getCurrentTimestamp } from '@/database/repositories/utils';
+import { brandColors } from '@/theme/colors';
 import type { Category, CategoryType } from '@/features/categories/types';
 
 type CategoryRow = {
@@ -32,21 +34,21 @@ type DefaultCategory = {
 };
 
 const defaultCategories: DefaultCategory[] = [
-  { color: '#CACACA', icon: 'bell-outline', name: 'Servicios', type: 'expense', children: ['Luz', 'Agua', 'Gas', 'Internet', 'Telefono'] },
-  { color: '#F1C27D', icon: 'home-outline', name: 'Hogar', type: 'expense', children: ['Renta', 'Mantenimiento', 'Limpieza', 'Muebles', 'Reparaciones'] },
-  { color: '#FFB4AB', icon: 'silverware-fork-knife', name: 'Comida', type: 'expense', children: ['Supermercado', 'Restaurantes', 'Comida rapida', 'Cafeterias', 'Delivery'] },
-  { color: '#90B8F0', icon: 'bus', name: 'Transporte', type: 'expense', children: ['Gasolina', 'Transporte publico', 'Taxi/Uber', 'Estacionamiento', 'Mantenimiento'] },
-  { color: '#DD90D8', icon: 'heart-pulse', name: 'Salud', type: 'expense', children: ['Consultas', 'Medicamentos', 'Estudios', 'Dentista', 'Terapia'] },
-  { color: '#D1C9FF', icon: 'tshirt-crew-outline', name: 'Ropa', type: 'expense', children: ['Ropa', 'Calzado', 'Accesorios', 'Uniformes'] },
-  { color: '#847DFF', icon: 'movie-open-outline', name: 'Entretenimiento', type: 'expense', children: ['Cine', 'Videojuegos', 'Salidas', 'Eventos', 'Hobbies'] },
-  { color: '#00B3DD', icon: 'paw-outline', name: 'Mascotas', type: 'expense', children: ['Alimento', 'Veterinario', 'Medicamentos', 'Accesorios', 'Higiene'] },
-  { color: '#4B49AA', icon: 'calendar-sync-outline', name: 'Suscripciones', type: 'expense', children: ['Streaming', 'Musica', 'Software', 'Aplicaciones', 'Membresias'] },
-  { color: '#6A6B6B', icon: 'dots-horizontal-circle-outline', name: 'Otros', type: 'expense', children: ['Educacion', 'Regalos', 'Tramites', 'Emergencias', 'Otros gastos'] },
-  { color: '#7DD8A8', icon: 'briefcase-outline', name: 'Trabajo', type: 'income', children: ['Sueldo', 'Bonos', 'Comisiones', 'Freelance', 'Horas extra'] },
-  { color: '#847DFF', icon: 'chart-line', name: 'Inversiones', type: 'income', children: ['Intereses', 'Dividendos', 'Rendimientos', 'Ganancias'] },
-  { color: '#DD90D8', icon: 'gift-outline', name: 'Regalos', type: 'income', children: ['Familia', 'Pareja', 'Amigos', 'Donaciones'] },
-  { color: '#00B3DD', icon: 'cart-outline', name: 'Ventas', type: 'income', children: ['Articulos personales', 'Electronicos', 'Ropa', 'Vehiculos', 'Otras ventas'] },
-  { color: '#D1C9FF', icon: 'cash-plus', name: 'Otros', type: 'income', children: ['Reembolsos', 'Cashback', 'Premios', 'Apoyos', 'Otros ingresos'] },
+  { color: brandColors.silver, icon: 'bell-outline', name: 'Servicios', type: 'expense', children: ['Luz', 'Agua', 'Gas', 'Internet', 'Teléfono'] },
+  { color: brandColors.warning, icon: 'home-outline', name: 'Hogar', type: 'expense', children: ['Renta', 'Mantenimiento', 'Limpieza', 'Muebles', 'Reparaciones'] },
+  { color: brandColors.error, icon: 'silverware-fork-knife', name: 'Comida', type: 'expense', children: ['Supermercado', 'Restaurantes', 'Comida rápida', 'Cafeterías', 'Delivery'] },
+  { color: brandColors.periwinkle, icon: 'bus', name: 'Transporte', type: 'expense', children: ['Gasolina', 'Transporte público', 'Taxi/Uber', 'Estacionamiento', 'Mantenimiento'] },
+  { color: brandColors.orchidBloom, icon: 'heart-pulse', name: 'Salud', type: 'expense', children: ['Consultas', 'Medicamentos', 'Estudios', 'Dentista', 'Terapia'] },
+  { color: brandColors.paleIris, icon: 'tshirt-crew-outline', name: 'Ropa', type: 'expense', children: ['Ropa', 'Calzado', 'Accesorios', 'Uniformes'] },
+  { color: brandColors.irisGleam, icon: 'movie-open-outline', name: 'Entretenimiento', type: 'expense', children: ['Cine', 'Videojuegos', 'Salidas', 'Eventos', 'Hobbies'] },
+  { color: brandColors.cyanSignal, icon: 'paw-outline', name: 'Mascotas', type: 'expense', children: ['Alimento', 'Veterinario', 'Medicamentos', 'Accesorios', 'Higiene'] },
+  { color: brandColors.deepIris, icon: 'calendar-sync-outline', name: 'Suscripciones', type: 'expense', children: ['Streaming', 'Música', 'Software', 'Aplicaciones', 'Membresías'] },
+  { color: brandColors.fog, icon: 'dots-horizontal-circle-outline', name: 'Otros', type: 'expense', children: ['Educación', 'Regalos', 'Trámites', 'Emergencias', 'Otros gastos'] },
+  { color: brandColors.success, icon: 'briefcase-outline', name: 'Trabajo', type: 'income', children: ['Sueldo', 'Bonos', 'Comisiones', 'Freelance', 'Horas extra'] },
+  { color: brandColors.irisGleam, icon: 'chart-line', name: 'Inversiones', type: 'income', children: ['Intereses', 'Dividendos', 'Rendimientos', 'Ganancias'] },
+  { color: brandColors.orchidBloom, icon: 'gift-outline', name: 'Regalos', type: 'income', children: ['Familia', 'Pareja', 'Amigos', 'Donaciones'] },
+  { color: brandColors.cyanSignal, icon: 'cart-outline', name: 'Ventas', type: 'income', children: ['Artículos personales', 'Electrónicos', 'Ropa', 'Vehículos', 'Otras ventas'] },
+  { color: brandColors.paleIris, icon: 'cash-plus', name: 'Otros', type: 'income', children: ['Reembolsos', 'Cashback', 'Premios', 'Apoyos', 'Otros ingresos'] },
 ];
 
 const previousDefaultIcons: Record<string, string> = {
@@ -73,11 +75,153 @@ function mapCategory(row: CategoryRow): Category {
 }
 
 function createId(type: CategoryType) {
-  return `category_${type}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return createRepositoryId(`category_${type}`);
 }
 
-function nowIso() {
-  return new Date().toISOString();
+function normalizeCategoryName(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('es-MX');
+}
+
+function findActiveByNormalizedName(
+  notebookId: string,
+  type: CategoryType,
+  name: string,
+  parentId: string | null,
+) {
+  const rows = database.getAllSync<CategoryRow>(
+    `
+      SELECT *
+      FROM category
+      WHERE notebook_id = ?
+        AND type = ?
+        AND ((? IS NULL AND parent_id IS NULL) OR parent_id = ?)
+        AND archived_at IS NULL
+      ORDER BY created_at ASC
+    `,
+    notebookId,
+    type,
+    parentId,
+    parentId,
+  );
+  const normalizedName = normalizeCategoryName(name);
+
+  return rows
+    .map(mapCategory)
+    .filter((category) => normalizeCategoryName(category.name) === normalizedName);
+}
+
+function chooseCanonicalCategory(categories: Category[], preferredName: string) {
+  return (
+    categories.find((category) => category.name === preferredName) ??
+    categories[0] ??
+    null
+  );
+}
+
+function mergeCategoryReferences(sourceId: string, targetId: string, notebookId: string) {
+  const updatedAt = getCurrentTimestamp();
+
+  database.runSync(
+    `
+      UPDATE "transaction"
+      SET category_id = ?, updated_at = ?
+      WHERE category_id = ?
+    `,
+    targetId,
+    updatedAt,
+    sourceId,
+  );
+  database.runSync(
+    `
+      UPDATE budget
+      SET category_id = ?, updated_at = ?
+      WHERE category_id = ?
+    `,
+    targetId,
+    updatedAt,
+    sourceId,
+  );
+  database.runSync(
+    `
+      UPDATE subscription
+      SET category_id = ?, updated_at = ?
+      WHERE category_id = ?
+    `,
+    targetId,
+    updatedAt,
+    sourceId,
+  );
+  database.runSync(
+    `
+      UPDATE category
+      SET parent_id = ?, updated_at = ?
+      WHERE parent_id = ?
+        AND notebook_id = ?
+        AND archived_at IS NULL
+    `,
+    targetId,
+    updatedAt,
+    sourceId,
+    notebookId,
+  );
+  database.runSync(
+    `
+      UPDATE category
+      SET archived_at = ?, updated_at = ?
+      WHERE id = ?
+        AND notebook_id = ?
+        AND archived_at IS NULL
+    `,
+    updatedAt,
+    updatedAt,
+    sourceId,
+    notebookId,
+  );
+}
+
+function consolidateDefaultCategory(
+  notebookId: string,
+  type: CategoryType,
+  name: string,
+  parentId: string | null,
+) {
+  const matches = findActiveByNormalizedName(notebookId, type, name, parentId);
+  const canonical = chooseCanonicalCategory(matches, name);
+
+  if (!canonical) {
+    return null;
+  }
+
+  matches
+    .filter((category) => category.id !== canonical.id)
+    .forEach((category) => {
+      mergeCategoryReferences(category.id, canonical.id, notebookId);
+    });
+
+  if (canonical.name !== name) {
+    database.runSync(
+      `
+        UPDATE category
+        SET name = ?, updated_at = ?
+        WHERE id = ?
+          AND notebook_id = ?
+          AND archived_at IS NULL
+      `,
+      name,
+      getCurrentTimestamp(),
+      canonical.id,
+      notebookId,
+    );
+
+    return { ...canonical, name };
+  }
+
+  return canonical;
 }
 
 export const categoryRepository = {
@@ -122,7 +266,7 @@ export const categoryRepository = {
       return mapCategory(existing);
     }
 
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const category: Category = {
       id: createId(type),
       notebookId,
@@ -165,7 +309,7 @@ export const categoryRepository = {
   },
 
   create(input: CategoryInput) {
-    const createdAt = nowIso();
+    const createdAt = getCurrentTimestamp();
     const category: Category = {
       id: createId(input.type),
       notebookId: input.notebookId,
@@ -210,7 +354,7 @@ export const categoryRepository = {
   },
 
   update(id: string, input: CategoryInput) {
-    const updatedAt = nowIso();
+    const updatedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -238,7 +382,7 @@ export const categoryRepository = {
   },
 
   archive(id: string, notebookId: string) {
-    const archivedAt = nowIso();
+    const archivedAt = getCurrentTimestamp();
 
     database.runSync(
       `
@@ -274,13 +418,18 @@ export const categoryRepository = {
       parentId,
     );
 
-    return row ? mapCategory(row) : null;
+    return row ? mapCategory(row) : (consolidateDefaultCategory(notebookId, type, name, parentId) ?? null);
   },
 
   seedDefaultCategories(notebookId: string) {
     defaultCategories.forEach((category) => {
       const parent =
-        this.findActiveByName(notebookId, category.type, category.name, null) ??
+        consolidateDefaultCategory(
+          notebookId,
+          category.type,
+          category.name,
+          null,
+        ) ??
         this.create({
           notebookId,
           name: category.name,
@@ -291,7 +440,7 @@ export const categoryRepository = {
         });
 
       category.children?.forEach((childName) => {
-        const existingChild = this.findActiveByName(
+        const existingChild = consolidateDefaultCategory(
           notebookId,
           category.type,
           childName,
@@ -324,7 +473,7 @@ export const categoryRepository = {
               AND archived_at IS NULL
           `,
           category.icon,
-          nowIso(),
+          getCurrentTimestamp(),
           parent.id,
           notebookId,
         );
