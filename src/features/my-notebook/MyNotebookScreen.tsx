@@ -62,12 +62,6 @@ export function MyNotebookScreen() {
       label: 'Presupuestos',
     },
     {
-      description: 'Metas y reservas',
-      href: '/savings',
-      icon: 'piggy-bank-outline',
-      label: 'Ahorros',
-    },
-    {
       description: 'Pagos recurrentes',
       href: '/subscriptions',
       icon: 'calendar-sync-outline',

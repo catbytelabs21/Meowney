@@ -1,6 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Easing,
@@ -510,6 +517,7 @@ function filterMovements(
   typeFilters: MovementType[],
   accountFilters: string[],
   categoryFilters: string[],
+  subcategoryFilters: string[],
   categories: Category[],
 ) {
   const categoryFilterIds = new Set(
@@ -517,6 +525,7 @@ function filterMovements(
       Array.from(getCategoryAndChildIds(categories, categoryId)),
     ),
   );
+  const subcategoryFilterIds = new Set(subcategoryFilters);
 
   return movements.filter((movement) => {
     const matchesType =
@@ -532,7 +541,14 @@ function filterMovements(
       (movement.categoryId
         ? categoryFilterIds.has(movement.categoryId)
         : false);
-    return matchesType && matchesAccount && matchesCategory;
+    const matchesSubcategory =
+      subcategoryFilters.length === 0 ||
+      (movement.categoryId
+        ? subcategoryFilterIds.has(movement.categoryId)
+        : false);
+    return (
+      matchesType && matchesAccount && matchesCategory && matchesSubcategory
+    );
   });
 }
 
@@ -722,6 +738,7 @@ export function FinancialSectionScreen({
     [],
   );
   const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
+  const [subcategoryFilters, setSubcategoryFilters] = useState<string[]>([]);
   const [isCreateMenuMounted, setIsCreateMenuMounted] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [createMode, setCreateMode] = useState<MovementType>("expense");
@@ -829,6 +846,7 @@ export function FinancialSectionScreen({
   }, [
     accountFilters,
     categoryFilters,
+    subcategoryFilters,
     customPeriodEnd,
     customPeriodStart,
     movementPeriod,
@@ -865,6 +883,7 @@ export function FinancialSectionScreen({
       typeFilters,
       accountFilters,
       categoryFilters,
+      subcategoryFilters,
       data.categoriesRaw,
     );
 
@@ -878,6 +897,7 @@ export function FinancialSectionScreen({
   }, [
     accountFilters,
     categoryFilters,
+    subcategoryFilters,
     customPeriodEnd,
     customPeriodStart,
     data.categoriesRaw,
@@ -969,11 +989,41 @@ export function FinancialSectionScreen({
   );
   const categoryOptions = useMemo(
     () =>
-      data.categoriesRaw.map((category) => ({
+      getPrimaryCategories(data.categoriesRaw).map((category) => ({
         label: getCategoryDisplayName(data.categoriesRaw, category),
         value: category.id,
       })),
     [data.categoriesRaw],
+  );
+  const subcategoryGroups = useMemo(() => {
+    const selectedCategoryIds = new Set(categoryFilters);
+
+    return getPrimaryCategories(data.categoriesRaw)
+      .filter(
+        (category) =>
+          selectedCategoryIds.size === 0 || selectedCategoryIds.has(category.id),
+      )
+      .map((category) => ({
+        category: {
+          label: category.name,
+          value: category.id,
+        },
+        subcategories: getSubcategories(data.categoriesRaw, category.id).map(
+          (subcategory) => ({
+            label: subcategory.name,
+            value: subcategory.id,
+          }),
+        ),
+      }))
+      .filter((group) => group.subcategories.length > 0);
+  }, [categoryFilters, data.categoriesRaw]);
+  const subcategoryOptions = useMemo(
+    () => subcategoryGroups.flatMap((group) => group.subcategories),
+    [subcategoryGroups],
+  );
+  const availableSubcategoryIds = useMemo(
+    () => new Set(subcategoryOptions.map((option) => option.value)),
+    [subcategoryOptions],
   );
   const selectedTypeLabel = summarizeSelection(
     typeFilters,
@@ -999,6 +1049,11 @@ export function FinancialSectionScreen({
     categoryFilters,
     "Todas las categorías",
     categoryOptions,
+  );
+  const selectedSubcategoryLabel = summarizeSelection(
+    subcategoryFilters,
+    "Todas las subcategorías",
+    subcategoryOptions,
   );
   const activeSection = section ?? selectedSection;
   const showSectionPicker = !section;
@@ -1045,9 +1100,41 @@ export function FinancialSectionScreen({
     setTypeFilters([]);
     setAccountFilters([]);
     setCategoryFilters([]);
+    setSubcategoryFilters([]);
     setMovementSummaryRange("month");
     setMovementSummaryMonth(today.slice(0, 7));
   }, [today]);
+  const updateCategoryFilters = useCallback(
+    (values: string[]) => {
+      const selectedCategoryIds = new Set(values);
+      const allowedSubcategoryIds = new Set(
+        data.categoriesRaw
+          .filter(
+            (category) =>
+              category.parentId &&
+              (selectedCategoryIds.size === 0 ||
+                selectedCategoryIds.has(category.parentId)),
+          )
+          .map((category) => category.id),
+      );
+
+      setCategoryFilters(values);
+      setSubcategoryFilters((current) =>
+        current.filter((categoryId) => allowedSubcategoryIds.has(categoryId)),
+      );
+    },
+    [data.categoriesRaw],
+  );
+
+  useEffect(() => {
+    setSubcategoryFilters((current) => {
+      const next = current.filter((categoryId) =>
+        availableSubcategoryIds.has(categoryId),
+      );
+
+      return next.length === current.length ? current : next;
+    });
+  }, [availableSubcategoryIds]);
 
   const openCreateMenu = () => {
     setIsCreateMenuMounted(true);
@@ -1907,14 +1994,25 @@ export function FinancialSectionScreen({
               selectedValues={categoryFilters}
               styles={styles}
               options={categoryOptions}
-              onChange={setCategoryFilters}
+              onChange={updateCategoryFilters}
+            />
+            <SubcategoryFilterMenu
+              colors={colors}
+              icon="tag-multiple-outline"
+              label="SUBCATEGORIA"
+              groups={subcategoryGroups}
+              selectedLabel={selectedSubcategoryLabel}
+              selectedValues={subcategoryFilters}
+              styles={styles}
+              onChange={setSubcategoryFilters}
             />
           </View>
         </View>
         <View style={styles.filterContextSpacer} />
         <Text style={styles.filterContextText}>
           Periodo: {selectedMovementPeriodLabel} - Tipo: {selectedTypeLabel} -
-          Cuenta: {selectedAccountLabel} - Categoria: {selectedCategoryLabel}
+          Cuenta: {selectedAccountLabel} - Categoria: {selectedCategoryLabel} -
+          Subcategoria: {selectedSubcategoryLabel}
         </Text>
       </AppAnimatedDisclosure>
     </View>
@@ -2905,6 +3003,11 @@ type FilterOption = {
   value: string;
 };
 
+type SubcategoryFilterGroup = {
+  category: FilterOption;
+  subcategories: FilterOption[];
+};
+
 type PeriodFilterMenuProps = {
   colors: MeowneyColors;
   options: FilterOption[];
@@ -3668,6 +3771,151 @@ function FilterMenu({
   );
 }
 
+type SubcategoryFilterMenuProps = {
+  colors: MeowneyColors;
+  groups: SubcategoryFilterGroup[];
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  selectedLabel: string;
+  selectedValues: string[];
+  styles: ReturnType<typeof createStyles>;
+  onChange: (values: string[]) => void;
+};
+
+function SubcategoryFilterMenu({
+  colors,
+  groups,
+  icon,
+  label,
+  selectedLabel,
+  selectedValues,
+  styles,
+  onChange,
+}: SubcategoryFilterMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedValueSet = new Set(selectedValues);
+
+  const toggleSubcategory = (value: string) => {
+    onChange(
+      selectedValueSet.has(value)
+        ? selectedValues.filter((selectedValue) => selectedValue !== value)
+        : [...selectedValues, value],
+    );
+  };
+
+  const toggleGroup = (values: string[]) => {
+    const allSelected = values.every((value) => selectedValueSet.has(value));
+
+    onChange(
+      allSelected
+        ? selectedValues.filter(
+            (selectedValue) => !values.includes(selectedValue),
+          )
+        : Array.from(new Set([...selectedValues, ...values])),
+    );
+  };
+
+  return (
+    <View style={styles.filterControl}>
+      <Menu
+        visible={isOpen}
+        onDismiss={() => setIsOpen(false)}
+        contentStyle={styles.menuContent}
+        anchor={
+          <Tooltip title={formatFilterTooltip(label)}>
+            <IconButton
+              accessibilityLabel={`${label}. ${selectedLabel}`}
+              icon={icon}
+              iconColor={colors.text}
+              size={20}
+              onPress={() => setIsOpen(true)}
+              style={styles.filterIconButton}
+            />
+          </Tooltip>
+        }
+      >
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => onChange([])}
+          style={({ pressed }) => [
+            styles.groupedMenuItem,
+            pressed ? styles.groupedMenuItemPressed : null,
+          ]}
+        >
+          <View style={styles.groupedMenuIconSlot}>
+            {selectedValues.length === 0 ? (
+              <MaterialCommunityIcons
+                name="check"
+                color={colors.text}
+                size={20}
+              />
+            ) : null}
+          </View>
+          <Text style={styles.groupedMenuText}>Todos</Text>
+        </Pressable>
+        {groups.map((group) => {
+          const groupValues = group.subcategories.map((option) => option.value);
+          const allSelected = groupValues.every((value) =>
+            selectedValueSet.has(value),
+          );
+          const someSelected = groupValues.some((value) =>
+            selectedValueSet.has(value),
+          );
+
+          return (
+            <Fragment key={group.category.value}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => toggleGroup(groupValues)}
+                style={({ pressed }) => [
+                  styles.groupedMenuItem,
+                  pressed ? styles.groupedMenuItemPressed : null,
+                ]}
+              >
+                <View style={styles.groupedMenuIconSlot}>
+                  {allSelected || someSelected ? (
+                    <MaterialCommunityIcons
+                      name={allSelected ? "check" : "minus"}
+                      color={colors.text}
+                      size={20}
+                    />
+                  ) : null}
+                </View>
+                <Text style={styles.groupedMenuCategoryText}>
+                  {group.category.label}
+                </Text>
+              </Pressable>
+              {group.subcategories.map((option) => (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  onPress={() => toggleSubcategory(option.value)}
+                  style={({ pressed }) => [
+                    styles.groupedMenuItem,
+                    styles.groupedSubcategoryMenuItem,
+                    pressed ? styles.groupedMenuItemPressed : null,
+                  ]}
+                >
+                  <View style={styles.groupedMenuIconSlot}>
+                    {selectedValueSet.has(option.value) ? (
+                      <MaterialCommunityIcons
+                        name="check"
+                        color={colors.text}
+                        size={20}
+                      />
+                    ) : null}
+                  </View>
+                  <Text style={styles.groupedMenuText}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </Fragment>
+          );
+        })}
+      </Menu>
+    </View>
+  );
+}
+
 function createStyles(colors: MeowneyColors) {
   return StyleSheet.create({
     safeArea: {
@@ -4045,6 +4293,37 @@ function createStyles(colors: MeowneyColors) {
     menuContent: {
       borderRadius: radii.card,
       backgroundColor: colors.surfaceAlt,
+    },
+    groupedMenuItem: {
+      minWidth: 220,
+      minHeight: 48,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingRight: spacing.lg,
+    },
+    groupedSubcategoryMenuItem: {
+      paddingLeft: spacing.lg,
+    },
+    groupedMenuItemPressed: {
+      backgroundColor: colors.selected,
+    },
+    groupedMenuIconSlot: {
+      width: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    groupedMenuText: {
+      flex: 1,
+      color: colors.text,
+      fontSize: typography.bodySize,
+      lineHeight: 22,
+    },
+    groupedMenuCategoryText: {
+      flex: 1,
+      color: colors.text,
+      fontSize: typography.bodySize,
+      fontWeight: typography.mediumWeight,
+      lineHeight: 22,
     },
     selectButton: {
       borderRadius: radii.button,
