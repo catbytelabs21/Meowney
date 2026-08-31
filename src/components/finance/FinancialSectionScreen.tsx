@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -700,6 +700,7 @@ export function FinancialSectionScreen({
   section,
 }: FinancialSectionScreenProps) {
   const selectedNotebookId = useAppStore((state) => state.selectedNotebookId);
+  const router = useRouter();
   const colorScheme = useMeowneyColorScheme();
   const colors = getMeowneyColors(colorScheme);
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -849,6 +850,15 @@ export function FinancialSectionScreen({
       visibleBalances.reduce((total, account) => total + account.balance, 0),
     [visibleBalances],
   );
+  const openBalanceBreakdown = useCallback(() => {
+    router.push({
+      pathname: "/balance/breakdown",
+      params: {
+        accounts: balanceAccountFilters.join(","),
+        date: selectedDate,
+      },
+    });
+  }, [balanceAccountFilters, router, selectedDate]);
   const visibleMovements = useMemo(() => {
     const filteredMovements = filterMovements(
       data.movements,
@@ -1753,6 +1763,7 @@ export function FinancialSectionScreen({
           icon="wallet-outline"
           iconBackgroundColor={colors.selected}
           iconColor={colors.text}
+          onPress={openBalanceBreakdown}
           subtitle={formatAccountCount(visibleBalances.length)}
           title="Total"
           trailingText={formatAmount(totalBalance, data.currency)}
@@ -1800,6 +1811,7 @@ export function FinancialSectionScreen({
     cycleBalanceChart,
     data.balanceTrend,
     data.currency,
+    openBalanceBreakdown,
     totalBalance,
     visibleBalances,
     balanceAccountFilters,

@@ -1,5 +1,5 @@
 import { database } from '@/database/database';
-import type { AccountBalance } from '@/features/balance/types';
+import type { AccountBalance, DailyAccountBalance } from '@/features/balance/types';
 import type {
   MovementCategoryFilter,
   MovementItem,
@@ -45,6 +45,15 @@ type MovementRow = {
   category_id: string | null;
   category_name: string | null;
 };
+
+const MAX_DAILY_BALANCE_ROWS = 3660;
+
+function addDays(dateKey: string, offset: number) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  date.setDate(date.getDate() + offset);
+
+  return date.toISOString().slice(0, 10);
+}
 
 function mapMovement(row: MovementRow): MovementItem {
   return {
@@ -143,6 +152,27 @@ export const historyRepository = {
       accountIcon: account.icon,
       balance: balances.get(account.id) ?? 0,
     }));
+  },
+
+  listDailyBalancesByNotebookBetweenDates(
+    notebookId: string,
+    startDateKey: string,
+    endDateKey: string,
+  ): DailyAccountBalance[] {
+    const rangeStart = startDateKey <= endDateKey ? startDateKey : endDateKey;
+    const rangeEnd = startDateKey <= endDateKey ? endDateKey : startDateKey;
+    const rows: DailyAccountBalance[] = [];
+    let currentDateKey = rangeStart;
+
+    while (currentDateKey <= rangeEnd && rows.length < MAX_DAILY_BALANCE_ROWS) {
+      rows.push({
+        balances: this.getBalancesByNotebookAtDate(notebookId, currentDateKey),
+        dateKey: currentDateKey,
+      });
+      currentDateKey = addDays(currentDateKey, 1);
+    }
+
+    return rows;
   },
 
   listCategoriesByNotebook(notebookId: string): MovementCategoryFilter[] {

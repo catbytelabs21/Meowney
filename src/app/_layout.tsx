@@ -26,6 +26,7 @@ const stackRoutes = [
   'index',
   'notebooks/index',
   '(tabs)',
+  'balance/breakdown',
   'accounts/index',
   'accounts/create',
   'accounts/[id]',

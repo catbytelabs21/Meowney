@@ -48,6 +48,7 @@ type AppReadOnlyRowProps = {
   icon: AppIconName;
   iconBackgroundColor?: string;
   iconColor?: string;
+  onPress?: () => void;
   subtitle?: string;
   title: string;
   trailingText?: string;
@@ -599,6 +600,7 @@ export function AppReadOnlyRow({
   icon,
   iconBackgroundColor,
   iconColor,
+  onPress,
   subtitle,
   title,
   trailingText,
@@ -606,29 +608,42 @@ export function AppReadOnlyRow({
 }: AppReadOnlyRowProps) {
   const colorScheme = useMeowneyColorScheme();
   const colors = getMeowneyColors(colorScheme);
-
-  return (
-    <View style={[styles.readOnlyRow, { borderColor: colors.pressed, backgroundColor: colors.background }]}>
-      <View style={styles.readOnlyRowContent}>
-        <View style={[styles.readOnlyIcon, { backgroundColor: iconBackgroundColor ?? colors.selected }]}>
-          <MaterialCommunityIcons name={icon} size={20} color={iconColor ?? colors.void} />
-        </View>
-        <View style={styles.readOnlyCopy}>
-          <NativeText numberOfLines={1} style={[styles.readOnlyTitle, { color: colors.text }]}>
-            {title}
-          </NativeText>
-          {subtitle ? (
-            <NativeText numberOfLines={1} style={[styles.readOnlySubtitle, { color: colors.mutedText }]}>
-              {subtitle}
-            </NativeText>
-          ) : null}
-        </View>
-        {trailingText ? (
-          <NativeText numberOfLines={1} style={[styles.readOnlyTrailing, { color: trailingTextColor ?? colors.text }]}>
-            {trailingText}
+  const content = (
+    <View style={styles.readOnlyRowContent}>
+      <View style={[styles.readOnlyIcon, { backgroundColor: iconBackgroundColor ?? colors.selected }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={iconColor ?? colors.void} />
+      </View>
+      <View style={styles.readOnlyCopy}>
+        <NativeText numberOfLines={1} style={[styles.readOnlyTitle, { color: colors.text }]}>
+          {title}
+        </NativeText>
+        {subtitle ? (
+          <NativeText numberOfLines={1} style={[styles.readOnlySubtitle, { color: colors.mutedText }]}>
+            {subtitle}
           </NativeText>
         ) : null}
       </View>
+      {trailingText ? (
+        <NativeText numberOfLines={1} style={[styles.readOnlyTrailing, { color: trailingTextColor ?? colors.text }]}>
+          {trailingText}
+        </NativeText>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View style={[styles.readOnlyRow, { borderColor: colors.pressed, backgroundColor: colors.background }]}>
+      {onPress ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onPress}
+          style={({ pressed }) => (pressed ? { backgroundColor: colors.pressed } : null)}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        content
+      )}
     </View>
   );
 }

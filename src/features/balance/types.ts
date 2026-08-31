@@ -5,3 +5,8 @@ export type AccountBalance = {
   accountIcon: string | null;
   balance: number;
 };
+
+export type DailyAccountBalance = {
+  balances: AccountBalance[];
+  dateKey: string;
+};
